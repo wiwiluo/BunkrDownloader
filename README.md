@@ -52,7 +52,7 @@ To batch download media from multiple URLs, you can use the `start.sh` script. T
 chmod +x start.sh  # Make the script executable
 ./start.sh
 ```
-3. The downloaded files will be saved in the Downloads directory.
+3. The downloaded files will be saved in the `Downloads` directory.
 
 ## Logging
 
