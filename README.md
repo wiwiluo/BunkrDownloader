@@ -13,27 +13,27 @@ A Python-based media downloader that utilizes Playwright for browser automation 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/media-downloader.git
+   git clone https://github.com/Lysagxra/LinuxBunkrDownloader.git
 
 2. Navigate to the project directory:
    ```bash
-   cd media-downloader
+   cd LinuxBunkrDownloader
 
 3. Install the required dependencies:
    ```bash
    pip install -r requirements.txt
 
-4. Ensure you have Playwright installed and set up:
+4. Ensure you have Playwright installed and set up installing Firefox:
    ```bash
-   playwright install
+   playwright install firefox
 
 ## Usage
 
 To use the media downloader, run the script with a valid album or media URL:
   ```bash
-  python3 media_downloader.py <album_or_media_url>
+  python3 downloader.py <album_or_media_url>
 
-Example
+## Example
   ```bash
   python3 media_downloader.py https://example.com/album-url
 
