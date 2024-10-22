@@ -56,4 +56,4 @@ chmod +x start.sh  # Make the script executable
 
 ## Logging
 
-The application logs any issues encountered during the download process in a file named session_log.txt. Check this file for any URLs that may have been blocked or had errors.
+The application logs any issues encountered during the download process in a file named `session_log.txt`. Check this file for any URLs that may have been blocked or had errors.
