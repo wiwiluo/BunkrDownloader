@@ -18,7 +18,6 @@ while read -r line; do
     formatted_url=$(format_url "$line")
 
     # Download Bunkr album
-#    python3 dump.py -u "$formatted_url"
     python3 downloader.py "$formatted_url"
 done < "$FILE"
 
