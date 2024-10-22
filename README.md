@@ -1,6 +1,6 @@
 # Linux Media Downloader
 
-A Python-based media downloader that utilizes Playwright for browser automation to fetch and download images and videos from specified URLs. This tool supports downloading from various media platforms and logs any issues encountered during the download process.
+A Python-based Bunkr downloader that utilizes Playwright for browser automation to fetch and download images and videos from specified URLs. This tool supports downloading from both Bunkr albums and individual file URLs, while also logging any issues encountered during the download process.
 
 ## Features
 
@@ -13,11 +13,11 @@ A Python-based media downloader that utilizes Playwright for browser automation 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Lysagxra/LinuxBunkrDownloader.git
+   git clone https://github.com/Lysagxra/SimpleLinuxBunkrDownloader.git
 
 2. Navigate to the project directory:
    ```bash
-   cd LinuxBunkrDownloader
+   cd SimpleLinuxBunkrDownloader
 
 3. Install the required dependencies:
    ```bash
