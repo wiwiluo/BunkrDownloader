@@ -30,12 +30,14 @@ A Python-based media downloader that utilizes Playwright for browser automation 
 ## Usage
 
 To use the media downloader, run the script with a valid album or media URL:
-  ```bash
-  python3 downloader.py <album_or_media_url>
+```bash
+python3 downloader.py <album_or_media_url>
+```
 
 ## Example
-  ```bash
-  python3 media_downloader.py https://example.com/album-url
+```bash
+python3 downloader.py https://bunkr.si/a/PUK068QE
+```
 
 ## Logging
 
