@@ -1,3 +1,30 @@
+"""
+A Python-based Bunkr downloader that utilizes Playwright for browser automation
+to fetch and download images and videos from Bunkr albums and single file URLs.
+This tool supports both single file and album downloads, while also logging any
+issues encountered during the download process.
+
+Modules:
+- os: For interacting with the operating system, managing file paths.
+- sys: For system-specific parameters and functions, including command-line
+       arguments.
+- asyncio: For writing asynchronous code to handle multiple download requests.
+- requests: For making HTTP requests to fetch web content.
+- bs4 (BeautifulSoup): For parsing HTML content and extracting data from web
+                       pages.
+- rich.progress: For displaying progress bars during file downloads.
+
+Constants:
+- SCRIPT_NAME: The name of the current script.
+- DOWNLOAD_FOLDER: Default directory for saving downloaded files.
+- SESSION_LOG: Log file to store URLs that encounter errors.
+- CHUNK_SIZE: Size of data chunks to read during downloads.
+
+Usage:
+Run the script from the command line with a valid album or media URL:
+    python3 downloader.py <album_or_media_url>
+"""
+
 import os
 import sys
 import asyncio
