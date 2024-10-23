@@ -167,7 +167,7 @@ async def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print(f"\t\t[+] Trying to download with Playwright...")
+    print(f"\t\t[+] Downloading with Playwright...")
     item_type = get_item_type(url)
 
     # If the item is a video or a non-picture file, it can be downloaded
