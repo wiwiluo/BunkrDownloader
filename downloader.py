@@ -74,13 +74,14 @@ HEADERS = {
 def check_url_type(url):
     """
     Determines whether the provided URL corresponds to an album or a single
-    file.
+    video file.
 
     Args:
         url (str): The URL to check.
 
     Returns:
-        bool: True if the URL is for an album, False if it is for a single file.
+        bool: True if the URL is for an album, False if it is for a single
+              video file.
 
     Raises:
         SystemExit: If the URL is invalid.
@@ -93,7 +94,7 @@ def check_url_type(url):
         if url_segment in url_mapping:
             return url_mapping[url_segment]
 
-        print('\nEnter a valid URL.')
+        print('\nEnter a valid video or album URL.')
         sys.exit(1)
 
     except IndexError:
@@ -101,13 +102,13 @@ def check_url_type(url):
 
 def get_album_id(url):
     """
-    Extracts the album ID from the provided URL.
+    Extracts the album or video ID from the provided URL.
 
     Args:
-        url (str): The URL from which to extract the album ID.
+        url (str): The URL from which to the ID.
 
     Returns:
-        str: The extracted album ID.
+        str: The extracted ID.
 
     Raises:
         ValueError: If the URL format is incorrect.
@@ -134,18 +135,13 @@ def fetch_page(url):
         response = requests.get(url, stream=True, headers=HEADERS)
         response.raise_for_status()
 
-        if response.status_code == 500:
+        if response.status_code in (500, 403):
+            messages = {
+                500: f"Internal server error when fetching {url}",
+                403: f"DDoSGuard blocked the request to {url}"
+            }
             print(
-                f"\t\t[-] Internal server error when fetching {url}, "
-                + "check the log file."
-            )
-            write_on_session_log(url)
-            sys.exit(1)
-
-        elif response.status_code == 403:
-            print(
-                f"\t\t[-] DDoSGuard blocked the request to {url}, "
-                + "check the log file."
+                f"\t\t[-] {messages[response.status_code]}, check the log file"
             )
             write_on_session_log(url)
             sys.exit(1)
@@ -167,17 +163,16 @@ async def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print(f"\t\t[+] Downloading with Playwright...")
+    print(f"\t\t[+] Download with Playwright...")
     item_type = get_item_type(url)
 
-    # If the item is a video or a non-picture file, it can be downloaded
-    # through this online app. Note that, in the case of the file, the item tag
-    # 'd' is replaced by 'v' when validating the item page URL
+    # Videos and non-picture files can be downloaded via this app.
+    # Note: the 'd' tag is replaced by 'v' when validating the item page URL.
     if item_type == 'v':
         return await extract_media_download_link(url, 'video')
 
-    # The only other item type is picture, which can be downloaded through this
-    # online app
+    # The only other item type is pictures, which can also be downloaded via
+    # this app.
     return await extract_media_download_link(url, 'picture')
 
 def get_download_path(url):
@@ -311,6 +306,7 @@ def extract_item_pages(soup):
             }
         )
         return [item['href'] for item in items]
+
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting item pages: {attr_err}")
 
@@ -320,7 +316,7 @@ def get_item_download_link(item_soup, item_type):
 
     Args:
         item_soup (BeautifulSoup): Parsed HTML content of the item.
-        item_type (str): The type of item ('v' for video, 'd' for non-picture).
+        item_type (str): The type of item ('v' for video, 'd' for picture).
 
     Returns:
         str: The download link for the item.
@@ -341,6 +337,7 @@ def get_item_download_link(item_soup, item_type):
             )
 
         return item_container['src']
+
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting source: {attr_err}")
     except UnboundLocalError as unb_err:
@@ -398,7 +395,6 @@ async def get_download_info(item_soup, item_page):
 
     if item_soup is None:
         item_download_link = await run(validated_item_page)
-
     else:
         item_type = get_item_type(validated_item_page)
         item_download_link = get_item_download_link(item_soup, item_type)
@@ -431,7 +427,7 @@ async def download_album(item_pages, download_path):
             )
 
             if not item_download_link:
-                # print(f"\t\t[-] No download link found for {item_page}")
+#                print(f"\t\t[-] No download link found for {item_page}")
                 continue
 
             print(f"\t[+] Downloading {item_file_name}...")
