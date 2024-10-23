@@ -29,9 +29,9 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
 
 ## Usage
 
-To use the media downloader, run the script with a valid album or media URL:
+To use the downloader, run the script with a valid album or media URL:
 ```bash
-python3 downloader.py <album_or_media_url>
+python3 downloader.py <bunkr_url>
 ```
 
 ## Example
@@ -45,7 +45,7 @@ To batch download media from multiple URLs, you can use the `start.sh` script. T
 
 ### Usage
 
-1. Create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
+1. If you are on Linux, create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
 
 2. Run the batch download script:
 ```bash
