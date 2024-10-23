@@ -1,5 +1,5 @@
 """
-A module for downloading media (images and videos) from Bunkr URLs
+A module for downloading single media (images and videos) from Bunkr URLs
 using Playwright for browser automation. It supports two types of downloads:
 pictures and videos. The module handles navigating to the media site,
 inputting the media URL, and extracting the download link.
@@ -23,13 +23,17 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 SESSION_LOG = 'session_log.txt'
 
+TIMEOUTS = {
+    'picture': 25000,
+    'video': 5000
+}
+
 DOWNLOADER_CONFIGS = {
     'picture': {
         'url': "https://extract.pics/",
         'input_selector': "input.w-full",
         'button_selector': "button.relative",
         'download_button': "div.relative img",
-        'timeout': 25000,
         'attribute': "src"
     },
     'video': {
@@ -39,7 +43,6 @@ DOWNLOADER_CONFIGS = {
         'download_button': (
             r"div.lg\:flex:nth-child(4) > div:nth-child(2) > a:nth-child(1)"
         ),
-        'timeout': 5000,
         'attribute': "href"
     }
 }
@@ -77,6 +80,19 @@ def write_on_session_log(url):
     with open(SESSION_LOG, 'a') as file:
         file.write(f"{url}\n")
 
+def log_ddos_blocked_request(download_link, url):
+    """
+    Logs requests blocked by DDoSGuard.
+
+    Args:
+        download_link (str): The link being checked for DDoSGuard blocks.
+        url (str): The original URL that was requested.
+    """
+    if "cloudflare" in download_link:
+        message = f"DDoSGuard blocked the request to {url}, check the log file."
+        print(f"\t\t[#] {message}")
+        write_on_session_log(url)
+
 async def run(playwright, url, item_type):
     """
     Main function to execute the download process using Playwright.
@@ -106,28 +122,27 @@ async def run(playwright, url, item_type):
         download_link = await wait_and_extract_download_link(
             page,
             config['download_button'],
-            config['timeout'],
+            TIMEOUTS[item_type],
             config['attribute']
         )
 
-        if "cloudflare" in download_link:
-            print(
-                f"\t\t[#] DDoSGuard blocked the request to {config['url']}, "
-                + "check the log file"
-            )
-            write_on_session_log(config['url'])
-            return None
-
+        log_ddos_blocked_request(download_link, config['url'])
         return download_link
 
     except PlaywrightTimeoutError:
-        print("\t\t[#] This page has no download link or temporarily blocked")
+        message = (
+            "This page has no download link or temporarily blocked, "
+            "check the log file"
+        )
+        print(f"\t\t[#] {message}")
         write_on_session_log(url)
         return None
 
     finally:
         await context.close()
         await browser.close()
+
+    return None
 
 async def extract_media_download_link(url, item_type):
     """
