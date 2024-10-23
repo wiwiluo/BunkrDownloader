@@ -131,13 +131,13 @@ def fetch_page(url):
         requests.RequestException: If there are issues with the request.
     """
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, stream=True, headers=HEADERS)
         response.raise_for_status()
 
         if response.status_code == 500:
             print(
                 f"\t\t[-] Internal server error when fetching {url}, "
-                + "check the log file"
+                + "check the log file."
             )
             write_on_session_log(url)
             sys.exit(1)
@@ -145,7 +145,7 @@ def fetch_page(url):
         elif response.status_code == 403:
             print(
                 f"\t\t[-] DDoSGuard blocked the request to {url}, "
-                + "check the log file"
+                + "check the log file."
             )
             write_on_session_log(url)
             sys.exit(1)
@@ -320,7 +320,7 @@ def get_item_download_link(item_soup, item_type):
 
     Args:
         item_soup (BeautifulSoup): Parsed HTML content of the item.
-        item_type (str): The type of item ('v' for video, 'd' for picture).
+        item_type (str): The type of item ('v' for video, 'd' for non-picture).
 
     Returns:
         str: The download link for the item.
@@ -431,7 +431,7 @@ async def download_album(item_pages, download_path):
             )
 
             if not item_download_link:
-                print(f"\t\t[-] No download link found for {item_page}")
+                # print(f"\t\t[-] No download link found for {item_page}")
                 continue
 
             print(f"\t[+] Downloading {item_file_name}...")
