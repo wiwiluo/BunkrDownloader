@@ -141,7 +141,7 @@ def fetch_page(url):
                 403: f"DDoSGuard blocked the request to {url}"
             }
             print(
-                f"\t\t[-] {messages[response.status_code]}, check the log file"
+                f"\t[-] {messages[response.status_code]}, check the log file"
             )
             write_on_session_log(url)
             sys.exit(1)
@@ -149,7 +149,7 @@ def fetch_page(url):
         return BeautifulSoup(response.text, 'html.parser')
 
     except requests.RequestException as req_err:
-        print(f"\t\t[-] Error: {req_err}")
+        print(f"\t[-] Error: {req_err}")
         return None
 
 async def run(url):
@@ -163,7 +163,7 @@ async def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print(f"\t\t[+] Download with Playwright...")
+    print(f"\t[+] Downloading with Playwright...")
     item_type = get_item_type(url)
 
     # Videos and non-picture files can be downloaded via this app.
