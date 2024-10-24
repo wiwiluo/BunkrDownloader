@@ -18,8 +18,10 @@ Logging:
 """
 
 import asyncio
-from playwright.async_api import async_playwright
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import (
+    async_playwright,
+    TimeoutError as PlaywrightTimeoutError
+)
 
 SESSION_LOG = 'session_log.txt'
 
