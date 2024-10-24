@@ -45,7 +45,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from playwright_downloader import (
+from helpers.playwright_downloader import (
     extract_media_download_link,
     write_on_session_log
 )
