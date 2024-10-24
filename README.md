@@ -17,7 +17,7 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
 
 2. Navigate to the project directory:
    ```bash
-   cd SimpleLinuxBunkrDownloader
+   cd SimpleBunkrDownloader
 
 3. Install the required dependencies:
    ```bash
