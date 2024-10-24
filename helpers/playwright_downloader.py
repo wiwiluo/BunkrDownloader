@@ -160,7 +160,7 @@ async def extract_media_download_link(url, item_type):
         download_link = await run(playwright, url, item_type)
         return download_link
 
-async def test_module():
+async def main():
     """
     Tests the media download link extraction for both picture and video URLs.
     """
@@ -181,4 +181,4 @@ async def test_module():
     print(f"Download link: {download_link}")
 
 if __name__ == '__main__':
-    asyncio.run(test_module())
+    asyncio.run(main())
