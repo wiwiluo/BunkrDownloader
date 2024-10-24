@@ -169,7 +169,7 @@ async def run(url):
     if item_type == 'v':
         return await extract_media_download_link(url, 'video')
 
-    # The only other item type is pictures, which can also be downloaded via
+    # The only other item type is picture, which can also be downloaded via
     # this app.
     return await extract_media_download_link(url, 'picture')
 
