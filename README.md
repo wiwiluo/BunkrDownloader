@@ -9,6 +9,27 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
 - Logs URLs that encounter errors for troubleshooting.
 - Progress indication during downloads.
 
+## Dependencies
+
+- Python 3
+- `playwright` - for browser automation and downloading content.
+- `BeautifulSoup` (bs4) - for HTML parsing
+- `argparse` - for command-line argument parsing
+- `requests` - for HTTP requests
+- `rich` - for progress display in the terminal.
+
+## Directory Structure
+
+```
+project-root/
+├── helpers/
+│ └── playwright_downloader.py  # Python script to download single media from a Bunkr URL using Playwright
+├── downloader.py               # Python script to download from a Bunkr URL
+├── main.py                     # Main Python script to run the downloader
+├── URLs.txt                    # Text file containing album URLs
+└── session_log.txt             # File for temporary data storage
+```
+
 ## Installation
 
 1. Clone the repository:
