@@ -14,7 +14,6 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
 - Python 3
 - `playwright` - for browser automation and downloading content.
 - `BeautifulSoup` (bs4) - for HTML parsing
-- `argparse` - for command-line argument parsing
 - `requests` - for HTTP requests
 - `rich` - for progress display in the terminal.
 
