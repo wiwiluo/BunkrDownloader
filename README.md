@@ -1,4 +1,4 @@
-# Simple Bunkr Downloader for Linux
+# Simple Bunkr Downloader
 
 A Python-based Bunkr downloader that utilizes Playwright for browser automation to fetch and download images and videos from specified URLs. This tool supports downloading from both Bunkr albums and individual file URLs, while also logging any issues encountered during the download process.
 
@@ -27,11 +27,12 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
    ```bash
    playwright install firefox
 
-## Usage
+## Single Media Download
 
-To use the downloader, run the script with a valid album or media URL:
+To download a single media from an URL, you can use `downloader.py` in the `helpers` directory, running the script with a valid album or media URL:
 ```bash
-python3 downloader.py <bunkr_url>
+cd helpers
+python3 downloader.py <bunkr_media_url>
 ```
 
 ## Example
@@ -41,16 +42,15 @@ python3 downloader.py https://bunkr.si/a/PUK068QE
 
 ## Batch Download
 
-To batch download media from multiple URLs, you can use the `start.sh` script. This script reads URLs from a file named `URLs.txt` and downloads each one using the media downloader.
+To batch download media from multiple URLs, you can use the `main.py` script. This script reads URLs from a file named `URLs.txt` and downloads each one using the media downloader.
 
 ### Usage
 
-1. If you are on Linux, create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
+1. Create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
 
 2. Run the batch download script:
 ```bash
-chmod +x start.sh  # Make the script executable
-./start.sh
+python3 main.py
 ```
 3. The downloaded files will be saved in the `Downloads` directory.
 
