@@ -154,7 +154,6 @@ def fetch_page(url):
     except requests.RequestException as req_err:
         print(f"\t\t[-] Error: {req_err}")
         return None
-
 async def run(url):
     """
     Initiates the download process for the specified URL using Playwright.
@@ -169,14 +168,17 @@ async def run(url):
     print(f"\t\t[+] Downloading with Playwright...")
     item_type = get_item_type(url)
 
-    # Videos and non-picture files can be downloaded via this app.
-    # Note: the 'd' tag is replaced by 'v' when validating the item page URL.
-    if item_type == 'v':
-        return await extract_media_download_link(url, 'video')
+    media_type_mapping = {'v': 'video', 'i': 'picture'}
 
-    # The only other item type is picture, which can also be downloaded via
-    # this app.
-    return await extract_media_download_link(url, 'picture')
+    if item_type not in media_type_mapping:
+        print(
+            f"Unknown item type: {item_type}. "
+            "Supported types are: {list(media_type_mapping.keys())}."
+        )
+        return None
+
+    media_type = media_type_mapping[item_type]
+    return await extract_media_download_link(url, media_type)
 
 def get_download_path(url):
     """
