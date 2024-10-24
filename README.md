@@ -29,9 +29,8 @@ A Python-based Bunkr downloader that utilizes Playwright for browser automation 
 
 ## Single Media Download
 
-To download a single media from an URL, you can use `downloader.py` in the `helpers` directory, running the script with a valid album or media URL:
+To download a single media from an URL, you can use `downloader.py`, running the script with a valid album or media URL:
 ```bash
-cd helpers
 python3 downloader.py <bunkr_media_url>
 ```
 
