@@ -17,7 +17,6 @@ Modules:
 Constants:
 - SCRIPT_NAME: The name of the current script.
 - DOWNLOAD_FOLDER: Default directory for saving downloaded files.
-- SESSION_LOG: Log file to store URLs that encounter errors.
 - CHUNK_SIZE: Size of data chunks to read during downloads.
 
 Usage:
@@ -48,7 +47,6 @@ from utils.playwright_downloader import (
 
 SCRIPT_NAME = os.path.basename(__file__)
 DOWNLOAD_FOLDER = 'Downloads'
-SESSION_LOG = 'session_log.txt'
 CHUNK_SIZE = 8192
 
 COLORS = {
