@@ -26,7 +26,7 @@ listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
 import asyncio
-from helpers.downloader import validate_and_download
+from downloader import validate_and_download
 
 FILE = 'URLs.txt'
 SESSION_LOG = 'session_log.txt'
