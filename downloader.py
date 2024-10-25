@@ -71,7 +71,8 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
         "Gecko/20100101 Firefox/117.0"
-    )
+    ),
+    "REFERER": 'https://get.bunkrr.su/'
 }
 
 def check_url_type(url):
@@ -135,7 +136,7 @@ def fetch_page(url):
         requests.RequestException: If there are issues with the request.
     """
     try:
-        response = requests.get(url, stream=True, headers=HEADERS)
+        response = requests.get(url)
         response.raise_for_status()
 
         if response.status_code in (500, 403):
@@ -433,14 +434,13 @@ async def download_album(item_pages, download_path):
             )
 
             if not item_download_link:
-#                print(f"\t\t[-] No download link found for {item_page}")
                 continue
 
             print(f"\t[+] Downloading {item_file_name}...")
             await download(item_download_link, download_path, item_file_name)
 
     except TypeError as type_err:
-        print(f"\t\t[-] Error downloading album: {type_err}")
+        print(f"\t[-] Error downloading album: {type_err}")
 
 async def handle_download_process(soup, url, download_path):
     """
