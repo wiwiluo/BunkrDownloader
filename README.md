@@ -2,7 +2,7 @@
 
 > A Python-based Bunkr downloader that utilizes Playwright for browser automation to fetch and download images and videos from specified URLs. This tool supports downloading from both Bunkr albums and individual file URLs, while also logging any issues encountered during the download process.
 
-![Screenshot](https://github.com/Lysagxra/SimpleBunkrDownloader/blob/204f721ee9b9b68b78f9e4b2adf2052a44ae5a69/misc/ScreenshotBunkr.png)
+![Screenshot](https://github.com/Lysagxra/SimpleBunkrDownloader/blob/9616448de4b4c90204535c602e99273029c0d800/misc/ScreenshotBunkr.png)
 
 ## Features
 
