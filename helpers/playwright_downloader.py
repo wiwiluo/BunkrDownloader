@@ -100,7 +100,7 @@ async def run(playwright, url, item_type):
     config = DOWNLOADER_CONFIGS[item_type]
 
     # Set headless to False to see the browser
-    browser = await playwright.firefox.launch(headless=False)
+    browser = await playwright.firefox.launch(headless=True)
     context = await browser.new_context()
     page = await context.new_page()
 
