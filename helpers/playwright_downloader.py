@@ -121,11 +121,10 @@ async def run(playwright, url, item_type):
         return download_link
 
     except PlaywrightTimeoutError:
-        message = (
-            "This page has no download link or temporarily blocked, "
+        print(
+            f"\t[#] This page has no download link or temporarily blocked, "
             "check the log file"
         )
-        print(f"\t[#] {message}")
         write_on_session_log(url)
         return None
 
