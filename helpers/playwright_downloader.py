@@ -3,18 +3,6 @@ A module for downloading single media (images and videos) from Bunkr URLs
 using Playwright for browser automation. It supports two types of downloads:
 pictures and videos. The module handles navigating to the media site,
 inputting the media URL, and extracting the download link.
-
-Functions:
-- extract_media_download_link(url, item_type): Initiates the download process
-                                               for the specified media type.
-- test_module(): Tests the functionality of the downloader with sample URLs.
-
-Dependencies:
-- asyncio: For asynchronous programming.
-- playwright.async_api: For browser automation.
-
-Logging:
-- Logs URLs that encounter errors or are blocked in 'session_log.txt'.
 """
 
 import asyncio
@@ -91,8 +79,9 @@ def log_ddos_blocked_request(download_link, url):
         url (str): The original URL that was requested.
     """
     if "cloudflare" in download_link:
-        message = f"DDoSGuard blocked the request to {url}, check the log file."
-        print(f"\t\t[#] {message}")
+        print(
+            f"\t[#] DDoSGuard blocked the request to {url}, check the log file"
+        )
         write_on_session_log(url)
 
 async def run(playwright, url, item_type):
@@ -111,7 +100,7 @@ async def run(playwright, url, item_type):
     config = DOWNLOADER_CONFIGS[item_type]
 
     # Set headless to False to see the browser
-    browser = await playwright.firefox.launch(headless=True)
+    browser = await playwright.firefox.launch(headless=False)
     context = await browser.new_context()
     page = await context.new_page()
 
@@ -136,7 +125,7 @@ async def run(playwright, url, item_type):
             "This page has no download link or temporarily blocked, "
             "check the log file"
         )
-        print(f"\t\t[#] {message}")
+        print(f"\t[#] {message}")
         write_on_session_log(url)
         return None
 
@@ -159,14 +148,13 @@ async def extract_media_download_link(url, item_type):
                      occurs.
     """
     async with async_playwright() as playwright:
-        download_link = await run(playwright, url, item_type)
-        return download_link
+        return await run(playwright, url, item_type)
 
 async def main():
     """
     Tests the media download link extraction for both picture and video URLs.
     """
-    picture_url = "https://bunkr.fi/i/YddngfgJd0cna"
+    picture_url = "https://bunkr.ph/i/tmpvdil4a9_-67790-45Mioywc.png"
     print(f"\nDownloading from picture URL: {picture_url}")
     download_link = await extract_media_download_link(picture_url, 'picture')
     print(f"Download link: {download_link}")
