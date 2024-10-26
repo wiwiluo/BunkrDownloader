@@ -1,23 +1,24 @@
 """
 A Python-based Bunkr downloader that utilizes Playwright for browser automation
-to fetch and download images and videos from Bunkr albums and single file URLs.
+to fetch and download from Bunkr albums and single file URLs.
 This tool supports both single file and album downloads, while also logging any
 issues encountered during the download process.
 
 Modules:
-- os: For interacting with the operating system, managing file paths.
-- sys: For system-specific parameters and functions, including command-line
-       arguments.
-- asyncio: For writing asynchronous code to handle multiple download requests.
-- requests: For making HTTP requests to fetch web content.
-- bs4 (BeautifulSoup): For parsing HTML content and extracting data from web
-                       pages.
-- rich.progress: For displaying progress bars during file downloads.
+    - os: For interacting with the operating system, managing file paths.
+    - sys: For system-specific parameters and functions, including command-line
+           arguments.
+    - asyncio: For writing asynchronous code to handle multiple download
+               requests.
+    - requests: For making HTTP requests to fetch web content.
+    - bs4 (BeautifulSoup): For parsing HTML content and extracting data from web
+                           pages.
+    - rich.progress: For displaying progress bars during file downloads.
 
 Constants:
-- SCRIPT_NAME: The name of the current script.
-- DOWNLOAD_FOLDER: Default directory for saving downloaded files.
-- CHUNK_SIZE: Size of data chunks to read during downloads.
+    - SCRIPT_NAME: The name of the current script.
+    - DOWNLOAD_FOLDER: Default directory for saving downloaded files.
+    - CHUNK_SIZE: Size of data chunks to read during downloads.
 
 Usage:
 Run the script from the command line with a valid album or media URL:
@@ -27,6 +28,7 @@ Run the script from the command line with a valid album or media URL:
 import os
 import sys
 import asyncio
+from urllib.parse import urlparse
 import requests
 from requests.exceptions import (
     ConnectionError as RequestsConnectionError,
@@ -34,7 +36,6 @@ from requests.exceptions import (
     RequestException
 )
 from bs4 import BeautifulSoup
-
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -45,6 +46,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from helpers.bunkr_status import get_non_operational_servers
 from helpers.playwright_downloader import (
     extract_media_download_link,
     write_on_session_log
@@ -53,6 +55,14 @@ from helpers.playwright_downloader import (
 SCRIPT_NAME = os.path.basename(__file__)
 DOWNLOAD_FOLDER = 'Downloads'
 CHUNK_SIZE = 8192
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
+        "Gecko/20100101 Firefox/117.0"
+    ),
+    "REFERER": 'https://get.bunkrr.su/'
+}
 
 COLORS = {
     'PURPLE': '\033[95m',
@@ -65,14 +75,6 @@ COLORS = {
     'BOLD': '\033[1m',
     'UNDERLINE': '\033[4m',
     'END': '\033[0m'
-}
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
-        "Gecko/20100101 Firefox/117.0"
-    ),
-    "REFERER": 'https://get.bunkrr.su/'
 }
 
 def check_url_type(url):
@@ -119,6 +121,7 @@ def get_album_id(url):
     """
     try:
         return url.split('/')[-1]
+
     except IndexError:
         raise ValueError("Invalid URL format.")
 
@@ -168,8 +171,8 @@ async def run(url):
                      occurs.
     """
     print(f"\t\t[+] Downloading with Playwright...")
-    item_type = get_item_type(url)
 
+    item_type = get_item_type(url)
     media_type_mapping = {'v': 'video', 'i': 'picture'}
 
     if item_type not in media_type_mapping:
@@ -212,6 +215,7 @@ def create_download_directory(download_path):
     """
     try:
         os.makedirs(download_path, exist_ok=True)
+
     except OSError as os_err:
         print(f"\t\t[-] Error creating directory: {os_err}")
         sys.exit(1)
@@ -235,6 +239,26 @@ def progress_bar():
         transient=True
     )
 
+def subdomain_is_non_operational(download_link):
+    """
+    Checks if the subdomain of the given download link is non-operational.
+
+    Args:
+        download_link (str): The URL from which the subdomain will be extracted.
+
+    Returns:
+        bool: True if the subdomain is non-operational, False otherwise.
+    """
+    non_operational_servers = get_non_operational_servers()
+
+    netloc = urlparse(download_link).netloc
+    subdomain = netloc.split('.')[0].capitalize()
+
+    if subdomain in non_operational_servers:
+        return True
+
+    return False
+
 async def download(download_link, download_path, file_name):
     """
     Downloads a file from the given download link to the specified path.
@@ -247,6 +271,14 @@ async def download(download_link, download_path, file_name):
     Raises:
         requests.RequestException: If there are issues during the download.
     """
+    if subdomain_is_non_operational(download_link):
+        print(
+            f"\t[#] Non-operational subdomain; "
+            "check the URL in the log file later"
+        )
+        write_on_session_log(download_link)
+        return
+
     try:
         response = requests.get(download_link, stream=True, headers=HEADERS)
         response.raise_for_status()
@@ -265,6 +297,7 @@ async def download(download_link, download_path, file_name):
 
     except requests.RequestException as req_err:
         print(f"\t\t[-] Error during download: {req_err}")
+
     except IOError as io_err:
         print(f"\t\t[-] File error: {io_err}")
 
@@ -347,6 +380,7 @@ def get_item_download_link(item_soup, item_type):
 
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting source: {attr_err}")
+
     except UnboundLocalError as unb_err:
         print(f"\t\t[-] Error extracting item container: {unb_err}")
 
@@ -364,8 +398,7 @@ def get_item_type(item_page):
         AttributeError: If there is an error extracting the item type.
     """
     try:
-        item_type = item_page.split('/')[-2]
-        return item_type
+        return item_page.split('/')[-2]
 
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting the item type: {attr_err}")
@@ -409,6 +442,7 @@ async def get_download_info(item_soup, item_page):
     try:
         item_file_name = item_download_link.split('/')[-1] \
             if item_download_link else None
+
     except IndexError as indx_err:
         print(f"\t\t[-] Error while extracting the file name: {indx_err}")
 
@@ -486,10 +520,13 @@ async def validate_and_download(url):
             f"\t[#] Connection error: Unable to reach {validated_url}. "
             "Please check your network connection."
         )
+
     except Timeout:
         print(f"\t[#] Timeout error: The request to {validated_url} timed out.")
+
     except RequestException as req_err:
         print(f"\t[#] Request error: {req_err}")
+
     except ValueError as val_err:
         print(f"\t[#] Value error: {val_err}")
 
