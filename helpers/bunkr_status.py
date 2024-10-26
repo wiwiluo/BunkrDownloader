@@ -42,25 +42,32 @@ def get_bunkr_status():
     Fetches the status of servers from the status page and returns a dictionary.
 
     Returns:
-        dict: A dictionary where the keys are server names and the values are
-              their statuses.
+        dict: A dictionary where the keys are server names (str) and the 
+              values are their statuses (str). If an error occurs during 
+              data extraction, an empty dictionary is returned.
     """
     soup = fetch_page(STATUS_PAGE)
-    server_items = soup.find_all(
-        'div',
-        {
-            'class': (
-                "flex items-center gap-4 py-4 border-b border-soft "
-                "last:border-b-0"
-            )
-        }
-    )
 
-    status_dict = {}
-    for server_item in server_items:
-        server_name = server_item.find('p').get_text(strip=True)
-        server_status = server_item.find('span').get_text(strip=True)
-        status_dict[server_name] = server_status
+    try:
+        server_items = soup.find_all(
+            'div',
+            {
+                'class': (
+                    "flex items-center gap-4 py-4 border-b border-soft "
+                    "last:border-b-0"
+                )
+            }
+        )
+
+        status_dict = {}
+        for server_item in server_items:
+            server_name = server_item.find('p').get_text(strip=True)
+            server_status = server_item.find('span').get_text(strip=True)
+            status_dict[server_name] = server_status
+
+    except AttributeError as attr_err:
+        print(f"\t[-] Error extracting server data: {attr_err}")
+        return {}
 
     return status_dict
 
