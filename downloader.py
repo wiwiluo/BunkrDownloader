@@ -36,7 +36,8 @@ from rich.progress import (
 )
 
 from helpers.bunkr_utils import (
-    check_url_type, get_album_id, get_non_operational_servers
+    check_url_type, get_album_id, validate_item_page, get_item_type,
+    get_non_operational_servers
 )
 from helpers.playwright_downloader import (
     extract_media_download_link, write_on_session_log
@@ -324,44 +325,6 @@ def get_item_download_link(item_soup, item_type):
         print(f"\t\t[-] Error extracting item container: {unb_err}")
 
     return None
-
-def get_item_type(item_page):
-    """
-    Extracts the type of item (album or single file) from the item page URL.
-
-    Args:
-        item_page (str): The item page URL.
-
-    Returns:
-        str: The type of item ('v' or 'd').
-
-    Raises:
-        AttributeError: If there is an error extracting the item type.
-    """
-    try:
-        return item_page.split('/')[-2]
-
-    except AttributeError as attr_err:
-        print(f"\t\t[-] Error extracting the item type: {attr_err}")
-
-    return None
-
-def validate_item_page(item_page):
-    """
-    Validates and adjusts the item page URL if necessary.
-
-    Args:
-        item_page (str): The item page URL.
-
-    Returns:
-        str: The validated item page URL.
-    """
-    item_type = get_item_type(item_page)
-
-    if item_type == 'd':
-        return item_page.replace('/d/', '/v/')
-
-    return item_page
 
 async def get_download_info(item_soup, item_page):
     """
