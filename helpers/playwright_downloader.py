@@ -67,7 +67,7 @@ def write_on_session_log(url):
     Args:
         url (str): The URL to log.
     """
-    with open(SESSION_LOG, 'a') as file:
+    with open(SESSION_LOG, 'a', encoding='utf-8') as file:
         file.write(f"{url}\n")
 
 def log_ddos_blocked_request(download_link, url):
@@ -78,7 +78,7 @@ def log_ddos_blocked_request(download_link, url):
         download_link (str): The link being checked for DDoSGuard blocks.
         url (str): The original URL that was requested.
     """
-    if "cloudflare" in download_link:
+    if "cloudfl" in download_link:
         print(
             f"\t[#] DDoSGuard blocked the request to {url}, check the log file"
         )
@@ -122,19 +122,20 @@ async def run(playwright, url, item_type):
 
     except PlaywrightTimeoutError:
         print(
-            f"\t[#] This page has no download link or temporarily blocked, "
+            "\t[#] This page has no download link or temporarily blocked, "
             "check the log file"
         )
         write_on_session_log(url)
         return None
 
     finally:
+        await page.close()
         await context.close()
         await browser.close()
 
     return None
 
-async def extract_media_download_link(url, item_type):
+async def extract_media_download_link(url, item_type, retries=3, delay=1):
     """
     Extracts the download link for the specified media type.
 
@@ -147,17 +148,20 @@ async def extract_media_download_link(url, item_type):
                      occurs.
     """
     async with async_playwright() as playwright:
-        return await run(playwright, url, item_type)
+        for attempt in range(retries):
+            try:
+                download_link = await run(playwright, url, item_type)
+                if download_link:
+                    return download_link
+
+            except PlaywrightTimeoutError:
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
 
 async def main():
     """
     Tests the media download link extraction for both picture and video URLs.
     """
-    picture_url = "https://bunkr.ph/i/tmpvdil4a9_-67790-45Mioywc.png"
-    print(f"\nDownloading from picture URL: {picture_url}")
-    download_link = await extract_media_download_link(picture_url, 'picture')
-    print(f"Download link: {download_link}")
-
     # This picture triggers the DDoSGuard
     picture_url = "https://bunkr.fi/i/YddngfgJd0cna"
     print(f"\nDownloading from picture URL: {picture_url}")
