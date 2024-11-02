@@ -15,7 +15,6 @@ from playwright.sync_api import (
 SESSION_LOG = 'session_log.txt'
 TIMEOUT = 5000
 
-# https://goonlinetools.com/online-image-downloader/
 CONFIG = {
     'url': "https://9xbuddy.in/en",
     'input_selector': "input.w-full",
