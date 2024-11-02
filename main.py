@@ -10,16 +10,6 @@ Key Features:
     - Maintains a session log for tracking download status.
     - Cleans up the URLs file and session log upon completion.
 
-Functions:
-    - read_file(filename): Reads the contents of a specified file and returns a
-                           list of its lines.
-    - write_file(filename, content=''): Writes content to a specified file,
-                                        clearing the file if no content is
-                                        provided.
-    - process_urls(urls): Validates and downloads content for a list of URLs.
-    - main(): Main entry point for executing the script, orchestrating the
-              overall flow.
-
 Usage:
 To run the module, execute the script directly. It will process URLs
 listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
