@@ -24,7 +24,7 @@
 ```
 project-root/
 ├── helpers/
-│ ├── bunkr_status.py           # Python script to fetch the Bunkr status
+│ ├── bunkr_utils.py            # Python script to fetch the Bunkr status
 │ └── playwright_downloader.py  # Python script to download single media from a Bunkr URL using Playwright
 ├── downloader.py               # Python script to download from a Bunkr URL
 ├── main.py                     # Main Python script to run the downloader
