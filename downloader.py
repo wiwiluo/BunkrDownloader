@@ -4,17 +4,6 @@ to fetch and download from Bunkr albums and single file URLs.
 This tool supports both single file and album downloads, while also logging any
 issues encountered during the download process.
 
-Modules:
-    - os: For interacting with the operating system, managing file paths.
-    - sys: For system-specific parameters and functions, including command-line
-           arguments.
-    - asyncio: For writing asynchronous code to handle multiple download
-               requests.
-    - requests: For making HTTP requests to fetch web content.
-    - bs4 (BeautifulSoup): For parsing HTML content and extracting data from web
-                           pages.
-    - rich.progress: For displaying progress bars during file downloads.
-
 Constants:
     - SCRIPT_NAME: The name of the current script.
     - DOWNLOAD_FOLDER: Default directory for saving downloaded files.
@@ -46,14 +35,17 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from helpers.bunkr_status import get_non_operational_servers
+from helpers.bunkr_utils import (
+    check_url_type, get_album_id, get_non_operational_servers
+)
 from helpers.playwright_downloader import (
-    extract_media_download_link,
-    write_on_session_log
+    extract_media_download_link, write_on_session_log
 )
 
 SCRIPT_NAME = os.path.basename(__file__)
 DOWNLOAD_FOLDER = 'Downloads'
+
+TIMEOUT = 10
 CHUNK_SIZE = 8192
 
 HEADERS = {
@@ -77,54 +69,6 @@ COLORS = {
     'END': '\033[0m'
 }
 
-def check_url_type(url):
-    """
-    Determines whether the provided URL corresponds to an album or a single
-    video file.
-
-    Args:
-        url (str): The URL to check.
-
-    Returns:
-        bool: True if the URL is for an album, False if it is for a single
-              video file.
-
-    Raises:
-        SystemExit: If the URL is invalid.
-        ValueError: If the URL format is incorrect.
-    """
-    try:
-        url_segment = url.split('/')[-2]
-        url_mapping = {'a': True, 'v': False}
-
-        if url_segment in url_mapping:
-            return url_mapping[url_segment]
-
-        print('\nEnter a valid video or album URL.')
-        sys.exit(1)
-
-    except IndexError:
-        raise ValueError("Invalid URL format.")
-
-def get_album_id(url):
-    """
-    Extracts the album or video ID from the provided URL.
-
-    Args:
-        url (str): The URL from which to the ID.
-
-    Returns:
-        str: The extracted ID.
-
-    Raises:
-        ValueError: If the URL format is incorrect.
-    """
-    try:
-        return url.split('/')[-1]
-
-    except IndexError:
-        raise ValueError("Invalid URL format.")
-
 def fetch_page(url):
     """
     Fetches the HTML content of a page at the given URL.
@@ -139,7 +83,7 @@ def fetch_page(url):
         requests.RequestException: If there are issues with the request.
     """
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=TIMEOUT)
         response.raise_for_status()
 
         if response.status_code in (500, 403):
@@ -170,7 +114,7 @@ async def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print(f"\t\t[+] Downloading with Playwright...")
+    print("\t\t[+] Downloading with Playwright...")
 
     item_type = get_item_type(url)
     media_type_mapping = {'v': 'video', 'i': 'picture'}
@@ -178,32 +122,14 @@ async def run(url):
     if item_type not in media_type_mapping:
         print(
             f"Unknown item type: {item_type}. "
-            "Supported types are: {list(media_type_mapping.keys())}."
+            f"Supported types are: {list(media_type_mapping.keys())}."
         )
         return None
 
     media_type = media_type_mapping[item_type]
     return await extract_media_download_link(url, media_type)
 
-def get_download_path(url):
-    """
-    Determines the path to save downloaded media based on the URL type.
-
-    Args:
-        url (str): The URL to check.
-
-    Returns:
-        str: The download path.
-    """
-    is_album = check_url_type(url)
-
-    if is_album:
-        album_id = get_album_id(url)
-        return os.path.join(DOWNLOAD_FOLDER, album_id)
-
-    return DOWNLOAD_FOLDER
-
-def create_download_directory(download_path):
+def create_download_directory(url):
     """
     Creates the download directory if it does not already exist.
 
@@ -213,14 +139,23 @@ def create_download_directory(download_path):
     Raises:
         SystemExit: If there is an error creating the directory.
     """
+    def get_download_path(url):
+        is_album = check_url_type(url)
+        if is_album:
+            album_id = get_album_id(url)
+            return os.path.join(DOWNLOAD_FOLDER, album_id)
+        return DOWNLOAD_FOLDER
+
     try:
+        download_path = get_download_path(url)
         os.makedirs(download_path, exist_ok=True)
+        return download_path
 
     except OSError as os_err:
         print(f"\t\t[-] Error creating directory: {os_err}")
         sys.exit(1)
 
-def progress_bar():
+def create_progress_bar():
     """
     Creates and returns a progress bar for tracking download progress.
 
@@ -273,21 +208,23 @@ async def download(download_link, download_path, file_name):
     """
     if subdomain_is_non_operational(download_link):
         print(
-            f"\t[#] Non-operational subdomain; "
+            "\t[#] Non-operational subdomain; "
             "check the URL in the log file later"
         )
         write_on_session_log(download_link)
         return
 
     try:
-        response = requests.get(download_link, stream=True, headers=HEADERS)
+        response = requests.get(
+            download_link, stream=True, headers=HEADERS, timeout=TIMEOUT
+        )
         response.raise_for_status()
 
         final_path = os.path.join(download_path, file_name)
         file_size = int(response.headers.get('content-length', -1))
 
         with open(final_path, 'wb') as file:
-            with progress_bar() as pbar:
+            with create_progress_bar() as pbar:
                 task = pbar.add_task("[cyan]Progress", total=file_size)
 
                 for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
@@ -350,6 +287,8 @@ def extract_item_pages(soup):
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting item pages: {attr_err}")
 
+    return None
+
 def get_item_download_link(item_soup, item_type):
     """
     Retrieves the download link from the item soup based on its type.
@@ -384,6 +323,8 @@ def get_item_download_link(item_soup, item_type):
     except UnboundLocalError as unb_err:
         print(f"\t\t[-] Error extracting item container: {unb_err}")
 
+    return None
+
 def get_item_type(item_page):
     """
     Extracts the type of item (album or single file) from the item page URL.
@@ -402,6 +343,8 @@ def get_item_type(item_page):
 
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting the item type: {attr_err}")
+
+    return None
 
 def validate_item_page(item_page):
     """
@@ -511,8 +454,7 @@ async def validate_and_download(url):
     soup = fetch_page(validated_url)
 
     try:
-        download_path = get_download_path(validated_url)
-        create_download_directory(download_path)
+        download_path = create_download_directory(validated_url)
         await handle_download_process(soup, validated_url, download_path)
 
     except RequestsConnectionError:
