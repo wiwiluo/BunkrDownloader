@@ -16,6 +16,31 @@ HEADERS = {
     )
 }
 
+KB = 1024
+MB = 1024 * KB
+
+def get_chunk_size(file_size):
+    """
+    Determines the optimal chunk size based on the file size.
+
+    Args:
+        file_size (int): The size of the file in bytes.
+
+    Returns:
+        int: The optimal chunk size in bytes.
+    """
+    thresholds = [
+        (MB, 16 * KB),        # Less than 1 MB
+        (10 * MB, 64 * KB),   # Less than 10 MB
+        (100 * MB, 256 * KB), # Less than 100 MB
+    ]
+
+    for threshold, chunk_size in thresholds:
+        if file_size < threshold:
+            return chunk_size
+
+    return 512 * KB
+
 def check_url_type(url):
     """
     Determines whether the provided URL corresponds to an album or a single
@@ -83,7 +108,7 @@ def get_item_type(item_page):
         return item_page.split('/')[-2]
 
     except AttributeError as attr_err:
-        print(f"\t\t[-] Error extracting the item type: {attr_err}")
+        print(f"Error extracting the item type: {attr_err}")
 
     return None
 
@@ -123,7 +148,7 @@ def fetch_page(url):
         return BeautifulSoup(response.text, 'html.parser')
 
     except requests.RequestException as req_err:
-        print(f"\t\t[-] Error: {req_err}")
+        print(f"Error: {req_err}")
         return None
 
 def get_bunkr_status():
@@ -155,7 +180,7 @@ def get_bunkr_status():
             status_dict[server_name] = server_status
 
     except AttributeError as attr_err:
-        print(f"\t[-] Error extracting server data: {attr_err}")
+        print(f"Error extracting server data: {attr_err}")
         return {}
 
     return status_dict
