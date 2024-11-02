@@ -15,8 +15,10 @@ To run the module, execute the script directly. It will process URLs
 listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
-import asyncio
+from rich.live import Live
+
 from downloader import validate_and_download
+from helpers.progress_utils import create_progress_bar, create_progress_table
 
 FILE = 'URLs.txt'
 SESSION_LOG = 'session_log.txt'
@@ -47,17 +49,22 @@ def write_file(filename, content=''):
     with open(filename, 'w', encoding='utf-8') as file:
         file.write(content)
 
-async def process_urls(urls):
+def process_urls(urls):
     """
     Validates and downloads items for a list of URLs.
 
     Args:
         urls (list): A list of URLs to process.
     """
-    for url in urls:
-        await validate_and_download(url)
+    overall_progress = create_progress_bar()
+    job_progress = create_progress_bar()
+    progress_table = create_progress_table(overall_progress, job_progress)
 
-async def main():
+    with Live(progress_table, refresh_per_second=10):
+        for url in urls:
+            validate_and_download(url, job_progress, overall_progress)
+
+def main():
     """
     Main function to execute the script.
 
@@ -67,9 +74,9 @@ async def main():
     write_file(SESSION_LOG)
 
     urls = read_file(FILE)
-    await process_urls(urls)
+    process_urls(urls)
 
     write_file(FILE)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
