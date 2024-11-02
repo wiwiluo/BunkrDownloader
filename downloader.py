@@ -4,11 +4,6 @@ to fetch and download from Bunkr albums and single file URLs.
 This tool supports both single file and album downloads, while also logging any
 issues encountered during the download process.
 
-Constants:
-    - SCRIPT_NAME: The name of the current script.
-    - DOWNLOAD_FOLDER: Default directory for saving downloaded files.
-    - CHUNK_SIZE: Size of data chunks to read during downloads.
-
 Usage:
 Run the script from the command line with a valid album or media URL:
     python3 downloader.py <album_or_media_url>
@@ -16,8 +11,10 @@ Run the script from the command line with a valid album or media URL:
 
 import os
 import sys
-import asyncio
+import time
 from urllib.parse import urlparse
+from http.client import RemoteDisconnected
+
 import requests
 from requests.exceptions import (
     ConnectionError as RequestsConnectionError,
@@ -25,19 +22,14 @@ from requests.exceptions import (
     RequestException
 )
 from bs4 import BeautifulSoup
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    BarColumn,
-    DownloadColumn,
-    TextColumn,
-    TransferSpeedColumn,
-    TimeRemainingColumn,
-)
+from rich.live import Live
 
+from helpers.progress_utils import (
+    truncate_description, create_progress_bar, create_progress_table
+)
 from helpers.bunkr_utils import (
     check_url_type, get_album_id, validate_item_page, get_item_type,
-    get_non_operational_servers
+    get_chunk_size, get_non_operational_servers
 )
 from helpers.playwright_downloader import (
     extract_media_download_link, write_on_session_log
@@ -46,9 +38,11 @@ from helpers.playwright_downloader import (
 SCRIPT_NAME = os.path.basename(__file__)
 DOWNLOAD_FOLDER = 'Downloads'
 
+MAX_VISIBLE_TASKS = 4
+TASK_COLOR = 'light_cyan3'
 TIMEOUT = 10
-CHUNK_SIZE = 8192
 
+SESSION = requests.Session()
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
@@ -57,20 +51,7 @@ HEADERS = {
     "REFERER": 'https://get.bunkrr.su/'
 }
 
-COLORS = {
-    'PURPLE': '\033[95m',
-    'CYAN': '\033[96m',
-    'DARKCYAN': '\033[36m',
-    'BLUE': '\033[94m',
-    'GREEN': '\033[92m',
-    'YELLOW': '\033[93m',
-    'RED': '\033[91m',
-    'BOLD': '\033[1m',
-    'UNDERLINE': '\033[4m',
-    'END': '\033[0m'
-}
-
-def fetch_page(url):
+def fetch_page(url, retries=3):
     """
     Fetches the HTML content of a page at the given URL.
 
@@ -83,28 +64,39 @@ def fetch_page(url):
     Raises:
         requests.RequestException: If there are issues with the request.
     """
-    try:
-        response = requests.get(url, timeout=TIMEOUT)
-        response.raise_for_status()
+    for attempt in range(retries):
+        try:
+            response = SESSION.get(url, timeout=TIMEOUT)
+            response.raise_for_status()
 
-        if response.status_code in (500, 403):
-            messages = {
-                500: f"Internal server error when fetching {url}",
-                403: f"DDoSGuard blocked the request to {url}"
-            }
+            if response.status_code in (500, 403):
+                messages = {
+                    500: f"Internal server error when fetching {url}",
+                    403: f"DDoSGuard blocked the request to {url}"
+                }
+                print(
+                    f"{messages[response.status_code]}, check the log file"
+                )
+                write_on_session_log(url)
+                sys.exit(1)
+
+            return BeautifulSoup(response.text, 'html.parser')
+
+        except RemoteDisconnected:
             print(
-                f"\t[-] {messages[response.status_code]}, check the log file"
+                "Remote end closed connection without response. "
+                f"Retrying in a moment... ({attempt + 1}/{retries})"
             )
-            write_on_session_log(url)
-            sys.exit(1)
+            if attempt < retries - 1:
+                time.sleep(5)
 
-        return BeautifulSoup(response.text, 'html.parser')
+        except requests.RequestException as req_err:
+            print(f"Request error: {req_err}")
+            return None
 
-    except requests.RequestException as req_err:
-        print(f"\t\t[-] Error: {req_err}")
-        return None
+    return None
 
-async def run(url):
+def run(url):
     """
     Initiates the download process for the specified URL using Playwright.
 
@@ -115,7 +107,7 @@ async def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print("\t\t[+] Downloading with Playwright...")
+    print("Downloading with Playwright...")
 
     item_type = get_item_type(url)
     media_type_mapping = {'v': 'video', 'i': 'picture'}
@@ -128,7 +120,7 @@ async def run(url):
         return None
 
     media_type = media_type_mapping[item_type]
-    return await extract_media_download_link(url, media_type)
+    return extract_media_download_link(url, media_type)
 
 def create_download_directory(url):
     """
@@ -153,27 +145,8 @@ def create_download_directory(url):
         return download_path
 
     except OSError as os_err:
-        print(f"\t\t[-] Error creating directory: {os_err}")
+        print(f"Error creating directory: {os_err}")
         sys.exit(1)
-
-def create_progress_bar():
-    """
-    Creates and returns a progress bar for tracking download progress.
-
-    Returns:
-        Progress: A Progress object configured with relevant columns.
-    """
-    return Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        DownloadColumn(),
-        "-",
-        TransferSpeedColumn(),
-        "-",
-        TimeRemainingColumn(),
-        transient=True
-    )
 
 def subdomain_is_non_operational(download_link):
     """
@@ -195,7 +168,30 @@ def subdomain_is_non_operational(download_link):
 
     return False
 
-async def download(download_link, download_path, file_name):
+def save_file_with_progress(response, download_path, task_info):
+    """
+    Saves the file from the response to the specified path while updating
+    the progress.
+
+    Args:
+        response (Response): The response object containing the file data.
+        download_path (str): The path where the file will be saved.
+        task_info (tuple): A tuple containing job progress, task, and other
+                           info.
+    """
+    (job_progress, task, _, _) = task_info
+    file_size = int(response.headers.get("content-length", -1))
+    total_downloaded = 0
+
+    with open(download_path, 'wb') as file:
+        for chunk in response.iter_content(chunk_size=get_chunk_size(file_size)):
+            if chunk:
+                file.write(chunk)
+                total_downloaded += len(chunk)
+                progress_percentage = (total_downloaded / file_size) * 100
+                job_progress.update(task, completed=progress_percentage)
+
+def download(download_link, download_path, file_name, task_info, retries=3):
     """
     Downloads a file from the given download link to the specified path.
 
@@ -208,64 +204,66 @@ async def download(download_link, download_path, file_name):
         requests.RequestException: If there are issues during the download.
     """
     if subdomain_is_non_operational(download_link):
-        print(
-            "\t[#] Non-operational subdomain; "
-            "check the URL in the log file later"
-        )
+        print("Non-operational subdomain; check the log file")
         write_on_session_log(download_link)
         return
 
-    try:
-        response = requests.get(
-            download_link, stream=True, headers=HEADERS, timeout=TIMEOUT
-        )
-        response.raise_for_status()
+    final_path = os.path.join(download_path, file_name)
+    (_, _, overall_progress, overall_task) = task_info
 
-        final_path = os.path.join(download_path, file_name)
-        file_size = int(response.headers.get('content-length', -1))
+    for attempt in range(retries):
+        try:
+            response = SESSION.get(
+                download_link, stream=True, headers=HEADERS, timeout=TIMEOUT
+            )
+            response.raise_for_status()
 
-        with open(final_path, 'wb') as file:
-            with create_progress_bar() as pbar:
-                task = pbar.add_task("[cyan]Progress", total=file_size)
+            save_file_with_progress(response, final_path, task_info)
+            # Exit the loop if the download is successful
+            break
 
-                for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-                    if chunk:
-                        file.write(chunk)
-                        pbar.update(task, advance=len(chunk))
+        except requests.RequestException as req_err:
+            if response.status_code == 429:
+                print(
+                    "Too many requests. "
+                    f"Retrying in a moment... ({attempt + 1}/{retries})"
+                )
+                time.sleep(10)
+            else:
+                # Exit on other errors
+                print(f"Error during download: {req_err}")
+                break
 
-    except requests.RequestException as req_err:
-        print(f"\t\t[-] Error during download: {req_err}")
+        except IOError as io_err:
+            print(f"File error: {io_err}")
 
-    except IOError as io_err:
-        print(f"\t\t[-] File error: {io_err}")
+    # Update overall progress if download was successful
+    if attempt < retries:
+        overall_progress.advance(overall_task)
 
-def print_status_message(url):
+def get_identifier(url):
     """
-    Prints a message indicating the start of the download process.
+    Extracts an identifier from the given URL. If the URL represents an album,
+    it retrieves the album ID; otherwise, it returns the last segment of the
+    URL.
 
     Args:
-        url (str): The URL of the media to download.
+        url (str): The URL from which to extract the identifier.
+
+    Returns:
+        str: The extracted identifier or the original URL in case of an error.
     """
     try:
         is_album = check_url_type(url)
-        identifier = get_album_id(url) if is_album else url.split('/')[-1]
-        message_type = "Album" if is_album else "File"
-
-        print(
-            f"\nDownloading {message_type}: "
-            + f"{COLORS['BOLD']}{identifier}{COLORS['END']}"
-        )
+        return get_album_id(url) if is_album else url.split('/')[-1]
 
     except IndexError as indx_err:
-        print(f"\t\t[-] Error extracting the identifier: {indx_err}")
+        print(f"Error extracting the identifier: {indx_err}")
 
-def print_completion_message():
-    """
-    Prints a message indicating that the download is complete.
-    """
-    print("\t[\u2713] Download complete.")
+    return url
 
 def extract_item_pages(soup):
+
     """
     Extracts individual item pages from the parsed HTML soup.
 
@@ -319,14 +317,14 @@ def get_item_download_link(item_soup, item_type):
         return item_container['src']
 
     except AttributeError as attr_err:
-        print(f"\t\t[-] Error extracting source: {attr_err}")
+        print(f"Error extracting source: {attr_err}")
 
     except UnboundLocalError as unb_err:
-        print(f"\t\t[-] Error extracting item container: {unb_err}")
+        print(f"Error extracting item container: {unb_err}")
 
     return None
 
-async def get_download_info(item_soup, item_page):
+def get_download_info(item_soup, item_page):
     """
     Gathers download information (link and filename) for the item.
 
@@ -340,10 +338,10 @@ async def get_download_info(item_soup, item_page):
     validated_item_page = validate_item_page(item_page)
 
     if item_soup is None:
-        item_download_link = await run(validated_item_page)
-    else:
-        item_type = get_item_type(validated_item_page)
-        item_download_link = get_item_download_link(item_soup, item_type)
+        return run(validated_item_page)
+
+    item_type = get_item_type(validated_item_page)
+    item_download_link = get_item_download_link(item_soup, item_type)
 
     try:
         item_file_name = item_download_link.split('/')[-1] \
@@ -354,7 +352,28 @@ async def get_download_info(item_soup, item_page):
 
     return item_download_link, item_file_name
 
-async def download_album(item_pages, download_path):
+def process_item_download(item_page, download_path, task_info):
+    """
+    Processes the download of a single item from the specified item page.
+
+    Args:
+        item_page (str): The URL of the item page to download.
+        download_path (str): The path where the downloaded file will be saved.
+        task_info (tuple): A tuple containing job progress, task, and other
+                          info.
+    """
+    validated_item_page = validate_item_page(item_page)
+    item_soup = fetch_page(validated_item_page)
+    (item_download_link, item_file_name) = get_download_info(
+        item_soup, validated_item_page
+    )
+
+    if item_download_link:
+        download(item_download_link, download_path, item_file_name, task_info)
+
+def download_album(
+    album_id, item_pages, download_path, overall_progress, job_progress
+):
     """
     Downloads all items in an album from a list of item pages.
 
@@ -365,24 +384,36 @@ async def download_album(item_pages, download_path):
     Raises:
         TypeError: If there is an error during the download process.
     """
-    try:
-        for item_page in item_pages:
-            validated_item_page = validate_item_page(item_page)
-            item_soup = fetch_page(validated_item_page)
-            (item_download_link, item_file_name) = await get_download_info(
-                item_soup, validated_item_page
-            )
+    num_items = len(item_pages)
+    overall_task = overall_progress.add_task(
+       f"[{TASK_COLOR}]{album_id}", total=num_items, visible=True
+    )
 
-            if not item_download_link:
-                continue
+    active_tasks = []
+    for (indx, item_page) in enumerate(item_pages):
+        task = job_progress.add_task(
+            f"[{TASK_COLOR}]File {indx + 1}/{num_items}",
+            total=100, visible=True
+        )
+        process_item_download(
+            item_page, download_path,
+            (job_progress, task, overall_progress, overall_task)
+        )
 
-            print(f"\t[+] Downloading {item_file_name}...")
-            await download(item_download_link, download_path, item_file_name)
+        active_tasks.append(task)
 
-    except TypeError as type_err:
-        print(f"\t[-] Error downloading album: {type_err}")
+        # Remove the oldest active task and update
+        if len(active_tasks) >= MAX_VISIBLE_TASKS:
+            oldest_task = active_tasks.pop(0)
+            job_progress.update(oldest_task, visible=False)
 
-async def handle_download_process(soup, url, download_path):
+    # Remove remaining tasks
+    for remaining_task in active_tasks:
+        job_progress.update(remaining_task, visible=False)
+
+def handle_download_process(
+    soup, url, download_path, job_progress, overall_progress
+):
     """
     Handles the download process for a given URL, determining if it's an album
     or a single file.
@@ -393,15 +424,29 @@ async def handle_download_process(soup, url, download_path):
         download_path (str): The path to save the downloaded files.
     """
     is_album = check_url_type(url)
+    identifier = get_identifier(url)
 
     if is_album:
         item_pages = extract_item_pages(soup)
-        await download_album(item_pages, download_path)
+        download_album(
+            identifier, item_pages, download_path,
+            overall_progress, job_progress
+        )
     else:
-        (download_link, file_name) = await get_download_info(soup, url)
-        await download(download_link, download_path, file_name)
+        (download_link, file_name) = get_download_info(soup, url)
+        overall_task = overall_progress.add_task(
+            f"[{TASK_COLOR}]{truncate_description(identifier)}", total=1
+        )
+        task = job_progress.add_task(
+            f"[{TASK_COLOR}]Progress", total=100
+        )
+        download(
+            download_link, download_path, file_name,
+            (job_progress, task, overall_progress, overall_task)
+        )
+        job_progress.update(task, visible=False)
 
-async def validate_and_download(url):
+def validate_and_download(url, job_progress, overall_progress):
     """
     Validates the given URL and orchestrates the download process.
 
@@ -413,32 +458,27 @@ async def validate_and_download(url):
                     process.
     """
     validated_url = validate_item_page(url)
-    print_status_message(validated_url)
     soup = fetch_page(validated_url)
 
     try:
         download_path = create_download_directory(validated_url)
-        await handle_download_process(soup, validated_url, download_path)
-
-    except RequestsConnectionError:
-        print(
-            f"\t[#] Connection error: Unable to reach {validated_url}. "
-            "Please check your network connection."
+        handle_download_process(
+            soup, validated_url, download_path, job_progress, overall_progress
         )
 
+    except RequestsConnectionError:
+        print(f"Connection error: Unable to reach {validated_url}.")
+
     except Timeout:
-        print(f"\t[#] Timeout error: The request to {validated_url} timed out.")
+        print(f"Timeout error: The request to {validated_url} timed out.")
 
     except RequestException as req_err:
-        print(f"\t[#] Request error: {req_err}")
+        print(f"Request error: {req_err}")
 
     except ValueError as val_err:
-        print(f"\t[#] Value error: {val_err}")
+        print(f"Value error: {val_err}")
 
-    finally:
-        print_completion_message()
-
-async def main():
+def main():
     """
     This function checks the command-line arguments for the required album URL,
     validates the input, and initiates the download process for the specified
@@ -458,7 +498,13 @@ async def main():
         sys.exit(1)
 
     url = sys.argv[1]
-    await validate_and_download(url)
+
+    overall_progress = create_progress_bar()
+    job_progress = create_progress_bar()
+    progress_table = create_progress_table(overall_progress, job_progress)
+
+    with Live(progress_table, refresh_per_second=10):
+        validate_and_download(url, job_progress, overall_progress)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
