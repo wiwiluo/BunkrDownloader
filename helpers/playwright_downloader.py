@@ -5,40 +5,29 @@ pictures and videos. The module handles navigating to the media site,
 inputting the media URL, and extracting the download link.
 """
 
-import asyncio
-from playwright.async_api import (
-    async_playwright,
+import re
+import time
+from playwright.sync_api import (
+    sync_playwright,
     TimeoutError as PlaywrightTimeoutError
 )
 
 SESSION_LOG = 'session_log.txt'
+TIMEOUT = 5000
 
-TIMEOUTS = {
-    'picture': 25000,
-    'video': 5000
+# https://goonlinetools.com/online-image-downloader/
+CONFIG = {
+    'url': "https://9xbuddy.in/en",
+    'input_selector': "input.w-full",
+    'button_selector': r".w-8\/12",
+    'download_button': (
+        r"div.lg\:flex:nth-child(6) > div:nth-child(2) > a:nth-child(1)"
+    ),
+    'attribute': "href"
 }
 
-DOWNLOADER_CONFIGS = {
-    'picture': {
-        'url': "https://extract.pics/",
-        'input_selector': "input.w-full",
-        'button_selector': "button.relative",
-        'download_button': "div.relative img",
-        'attribute': "src"
-    },
-    'video': {
-        'url': "https://9xbuddy.in/en",
-        'input_selector': "input.w-full",
-        'button_selector': r".w-8\/12",
-        'download_button': (
-            r"div.lg\:flex:nth-child(4) > div:nth-child(2) > a:nth-child(1)"
-        ),
-        'attribute': "href"
-    }
-}
-
-async def wait_and_extract_download_link(
-        page, download_button_selector, timeout, attribute
+def wait_and_extract_download_link(
+        page, download_button_selector, attribute
 ):
     """
     Waits for a download link to become available on the page, then extracts
@@ -56,9 +45,9 @@ async def wait_and_extract_download_link(
         str or None: The value of the specified attribute, or None if the
                      element is not found.
     """
-    await page.wait_for_selector(download_button_selector, timeout=timeout)
-    element = await page.query_selector(download_button_selector)
-    return await element.get_attribute(attribute) if element else None
+    page.wait_for_selector(download_button_selector, timeout=TIMEOUT)
+    element = page.query_selector(download_button_selector)
+    return element.get_attribute(attribute) if element else None
 
 def write_on_session_log(url):
     """
@@ -70,54 +59,50 @@ def write_on_session_log(url):
     with open(SESSION_LOG, 'a', encoding='utf-8') as file:
         file.write(f"{url}\n")
 
-def log_ddos_blocked_request(download_link, url):
-    """
-    Logs requests blocked by DDoSGuard.
+#def log_ddos_blocked_request(download_link, url):
+#    """
+#    Logs requests blocked by DDoSGuard.
 
-    Args:
-        download_link (str): The link being checked for DDoSGuard blocks.
-        url (str): The original URL that was requested.
-    """
-    if "cloudfl" in download_link:
-        print(
-            f"\t[#] DDoSGuard blocked the request to {url}, check the log file"
-        )
-        write_on_session_log(url)
+#    Args:
+#        download_link (str): The link being checked for DDoSGuard blocks.
+#        url (str): The original URL that was requested.
+#    """
+#    if "cloudfl" in download_link:
+#        print(
+#            f"DDoSGuard blocked the request to {url}, check the log file"
+#        )
+#        write_on_session_log(url)
 
-async def run(playwright, url, item_type):
+def run(playwright, url):
     """
     Main function to execute the download process using Playwright.
 
     Args:
         playwright: The Playwright instance.
         url (str): The URL of the media to download.
-        item_type (str): The type of item to download ('picture' or 'video').
 
     Returns:
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    config = DOWNLOADER_CONFIGS[item_type]
-
     # Set headless to False to see the browser
-    browser = await playwright.firefox.launch(headless=True)
-    context = await browser.new_context()
-    page = await context.new_page()
+    browser = playwright.firefox.launch(headless=True)
+    context = browser.new_context()
+    page = context.new_page()
 
     try:
-        await page.goto(config['url'])
-        await page.fill(config['input_selector'], url)
-        await page.wait_for_selector(config['button_selector'], timeout=5000)
-        await page.click(config['button_selector'])
+        page.goto(CONFIG['url'])
+        page.fill(CONFIG['input_selector'], url)
+        page.wait_for_selector(CONFIG['button_selector'], timeout=TIMEOUT)
+        page.click(CONFIG['button_selector'])
 
-        download_link = await wait_and_extract_download_link(
+        download_link = wait_and_extract_download_link(
             page,
-            config['download_button'],
-            TIMEOUTS[item_type],
-            config['attribute']
+            CONFIG['download_button'],
+            CONFIG['attribute']
         )
 
-        log_ddos_blocked_request(download_link, config['url'])
+#        log_ddos_blocked_request(download_link, CONFIG['url'])
         return download_link
 
     except PlaywrightTimeoutError:
@@ -129,13 +114,33 @@ async def run(playwright, url, item_type):
         return None
 
     finally:
-        await page.close()
-        await context.close()
-        await browser.close()
+        page.close()
+        context.close()
+        browser.close()
 
     return None
 
-async def extract_media_download_link(url, item_type, retries=3, delay=1):
+def clean_filename(filename):
+    """
+    Cleans the given filename by removing unwanted parts and replacing
+    the last underscore before the extension with a dot.
+
+    Args:
+        filename (str): The original filename to clean.
+
+    Returns:
+        str: The cleaned filename with the appropriate extension.
+    """
+    # Regular expression to find the pattern before the last part
+    match = re.match(r'^(.*?)(_.*?)(?:\+%7C.+)?$', filename)
+    if match:
+        base = match.group(1)
+        extension = match.group(2).replace('_', '')
+        return f"{base}.{extension}"
+
+    return filename
+
+def extract_media_download_link(url, item_type, retries=3):
     """
     Extracts the download link for the specified media type.
 
@@ -147,31 +152,36 @@ async def extract_media_download_link(url, item_type, retries=3, delay=1):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    async with async_playwright() as playwright:
+    url = url.replace('/i/', '/v/') if item_type == 'picture' else url
+
+    with sync_playwright() as playwright:
         for attempt in range(retries):
             try:
-                download_link = await run(playwright, url, item_type)
+                download_link = run(playwright, url)
                 if download_link:
-                    return download_link
+                    filename = download_link.split('customName=')[-1]
+                    filename = clean_filename(filename)
+                    return (filename, download_link)
 
             except PlaywrightTimeoutError:
                 if attempt < retries - 1:
-                    await asyncio.sleep(delay)
+                    time.sleep(1)
 
-async def main():
+    return None, None
+
+def main():
     """
     Tests the media download link extraction for both picture and video URLs.
     """
-    # This picture triggers the DDoSGuard
     picture_url = "https://bunkr.fi/i/YddngfgJd0cna"
     print(f"\nDownloading from picture URL: {picture_url}")
-    download_link = await extract_media_download_link(picture_url, 'picture')
-    print(f"Download link: {download_link}")
+    download_info = extract_media_download_link(picture_url, 'picture')
+    print(f"Download info: {download_info}")
 
     video_url = "https://bunkr.fi/v/5EpJtKRGzLXfd"
     print(f"\nDownloading from video URL: {video_url}")
-    download_link = await extract_media_download_link(video_url, 'video')
-    print(f"Download link: {download_link}")
+    download_info = extract_media_download_link(video_url, 'video')
+    print(f"Download link: {download_info}")
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
