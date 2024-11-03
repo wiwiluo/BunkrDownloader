@@ -12,7 +12,6 @@ Run the script from the command line with a valid album or media URL:
 import os
 import sys
 import time
-from urllib.parse import urlparse
 from http.client import RemoteDisconnected
 
 import requests
@@ -24,12 +23,13 @@ from requests.exceptions import (
 from bs4 import BeautifulSoup
 from rich.live import Live
 
+from helpers.download_utils import save_file_with_progress
 from helpers.progress_utils import (
     truncate_description, create_progress_bar, create_progress_table
 )
 from helpers.bunkr_utils import (
     check_url_type, get_album_id, validate_item_page, get_item_type,
-    get_chunk_size, get_non_operational_servers
+    subdomain_is_non_operational
 )
 from helpers.playwright_downloader import (
     extract_media_download_link, write_on_session_log
@@ -51,6 +51,30 @@ HEADERS = {
     "REFERER": 'https://get.bunkrr.su/'
 }
 
+def handle_response(url, response):
+    """
+    Processes the HTTP response and handles specific status codes.
+
+    Args:
+        url (str): The URL to fetch.
+        response (requests.Response): The HTTP response object to process.
+
+    Returns:
+        BeautifulSoup or None: A BeautifulSoup object if the response is 
+                               successful; otherwise, returns None if an
+                               error status code is encountered.
+    """
+    if response.status_code in (500, 403):
+        messages = {
+            500: f"Internal server error when fetching {url}",
+            403: f"DDoSGuard blocked the request to {url}"
+        }
+        print(f"{messages[response.status_code]}, check the log file")
+        write_on_session_log(url)
+        return None
+
+    return BeautifulSoup(response.text, 'html.parser')
+
 def fetch_page(url, retries=3):
     """
     Fetches the HTML content of a page at the given URL.
@@ -68,27 +92,14 @@ def fetch_page(url, retries=3):
         try:
             response = SESSION.get(url, timeout=TIMEOUT)
             response.raise_for_status()
-
-            if response.status_code in (500, 403):
-                messages = {
-                    500: f"Internal server error when fetching {url}",
-                    403: f"DDoSGuard blocked the request to {url}"
-                }
-                print(
-                    f"{messages[response.status_code]}, check the log file"
-                )
-                write_on_session_log(url)
-                sys.exit(1)
-
-            return BeautifulSoup(response.text, 'html.parser')
+            return handle_response(url, response)
 
         except RemoteDisconnected:
             print(
                 "Remote end closed connection without response. "
                 f"Retrying in a moment... ({attempt + 1}/{retries})"
             )
-            if attempt < retries - 1:
-                time.sleep(5)
+            time.sleep(5)
 
         except requests.RequestException as req_err:
             print(f"Request error: {req_err}")
@@ -107,8 +118,7 @@ def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-    print("Downloading with Playwright...")
-
+#    print("Downloading with Playwright...")
     item_type = get_item_type(url)
     media_type_mapping = {'v': 'video', 'i': 'picture'}
 
@@ -132,64 +142,30 @@ def create_download_directory(url):
     Raises:
         SystemExit: If there is an error creating the directory.
     """
-    def get_download_path(url):
-        is_album = check_url_type(url)
-        if is_album:
-            album_id = get_album_id(url)
-            return os.path.join(DOWNLOAD_FOLDER, album_id)
-        return DOWNLOAD_FOLDER
+    album_id = get_album_id(url) if check_url_type(url) else None
+    download_path = os.path.join(DOWNLOAD_FOLDER, album_id) if album_id \
+        else DOWNLOAD_FOLDER
 
-    try:
-        download_path = get_download_path(url)
-        os.makedirs(download_path, exist_ok=True)
-        return download_path
+    os.makedirs(download_path, exist_ok=True)
+    return download_path
 
-    except OSError as os_err:
-        print(f"Error creating directory: {os_err}")
-        sys.exit(1)
-
-def subdomain_is_non_operational(download_link):
+def handle_request_exception(req_err, attempt, retries):
     """
-    Checks if the subdomain of the given download link is non-operational.
+    Handles exceptions raised during the download request.
 
     Args:
-        download_link (str): The URL from which the subdomain will be extracted.
-
-    Returns:
-        bool: True if the subdomain is non-operational, False otherwise.
+        req_err (requests.RequestException): The raised exception.
+        attempt (int): The current attempt number.
+        retries (int): The total number of allowed retries.
     """
-    non_operational_servers = get_non_operational_servers()
-
-    netloc = urlparse(download_link).netloc
-    subdomain = netloc.split('.')[0].capitalize()
-
-    if subdomain in non_operational_servers:
-        return True
-
-    return False
-
-def save_file_with_progress(response, download_path, task_info):
-    """
-    Saves the file from the response to the specified path while updating
-    the progress.
-
-    Args:
-        response (Response): The response object containing the file data.
-        download_path (str): The path where the file will be saved.
-        task_info (tuple): A tuple containing job progress, task, and other
-                           info.
-    """
-    (job_progress, task, _, _) = task_info
-    file_size = int(response.headers.get("content-length", -1))
-    total_downloaded = 0
-
-    with open(download_path, 'wb') as file:
-        for chunk in response.iter_content(chunk_size=get_chunk_size(file_size)):
-            if chunk:
-                file.write(chunk)
-                total_downloaded += len(chunk)
-                progress_percentage = (total_downloaded / file_size) * 100
-                job_progress.update(task, completed=progress_percentage)
+    if req_err.response.status_code == 429:
+        print(
+            "Too many requests. "
+            f"Retrying in a moment... ({attempt + 1}/{retries})"
+        )
+        time.sleep(10)
+    else:
+        print(f"Error during download: {req_err}")
 
 def download(download_link, download_path, file_name, task_info, retries=3):
     """
@@ -218,28 +194,17 @@ def download(download_link, download_path, file_name, task_info, retries=3):
             )
             response.raise_for_status()
 
-            save_file_with_progress(response, final_path, task_info)
             # Exit the loop if the download is successful
+            save_file_with_progress(response, final_path, task_info)
+            overall_progress.advance(overall_task)
             break
 
         except requests.RequestException as req_err:
-            if response.status_code == 429:
-                print(
-                    "Too many requests. "
-                    f"Retrying in a moment... ({attempt + 1}/{retries})"
-                )
-                time.sleep(10)
-            else:
-                # Exit on other errors
-                print(f"Error during download: {req_err}")
-                break
-
-        except IOError as io_err:
-            print(f"File error: {io_err}")
+            handle_request_exception(req_err, attempt, retries)
 
     # Update overall progress if download was successful
-    if attempt < retries:
-        overall_progress.advance(overall_task)
+#    if attempt < retries:
+#        overall_progress.advance(overall_task)
 
 def get_identifier(url):
     """
@@ -286,7 +251,7 @@ def extract_item_pages(soup):
     except AttributeError as attr_err:
         print(f"\t\t[-] Error extracting item pages: {attr_err}")
 
-    return None
+    return []
 
 def get_item_download_link(item_soup, item_type):
     """
@@ -316,11 +281,8 @@ def get_item_download_link(item_soup, item_type):
 
         return item_container['src']
 
-    except AttributeError as attr_err:
-        print(f"Error extracting source: {attr_err}")
-
-    except UnboundLocalError as unb_err:
-        print(f"Error extracting item container: {unb_err}")
+    except (AttributeError, UnboundLocalError) as err:
+        print(f"Error extracting source: {err}")
 
     return None
 
@@ -336,19 +298,13 @@ def get_download_info(item_soup, item_page):
         tuple: A tuple containing the download link and file name.
     """
     validated_item_page = validate_item_page(item_page)
-
     if item_soup is None:
         return run(validated_item_page)
 
     item_type = get_item_type(validated_item_page)
     item_download_link = get_item_download_link(item_soup, item_type)
-
-    try:
-        item_file_name = item_download_link.split('/')[-1] \
-            if item_download_link else None
-
-    except IndexError as indx_err:
-        print(f"\t\t[-] Error while extracting the file name: {indx_err}")
+    item_file_name = item_download_link.split('/')[-1] \
+        if item_download_link else None
 
     return item_download_link, item_file_name
 
@@ -386,14 +342,13 @@ def download_album(
     """
     num_items = len(item_pages)
     overall_task = overall_progress.add_task(
-       f"[{TASK_COLOR}]{album_id}", total=num_items, visible=True
+       f"[{TASK_COLOR}]{album_id}", total=num_items
     )
 
     active_tasks = []
     for (indx, item_page) in enumerate(item_pages):
         task = job_progress.add_task(
-            f"[{TASK_COLOR}]File {indx + 1}/{num_items}",
-            total=100, visible=True
+            f"[{TASK_COLOR}]File {indx + 1}/{num_items}", total=100
         )
         process_item_download(
             item_page, download_path,
@@ -437,9 +392,7 @@ def handle_download_process(
         overall_task = overall_progress.add_task(
             f"[{TASK_COLOR}]{truncate_description(identifier)}", total=1
         )
-        task = job_progress.add_task(
-            f"[{TASK_COLOR}]Progress", total=100
-        )
+        task = job_progress.add_task(f"[{TASK_COLOR}]Progress", total=100)
         download(
             download_link, download_path, file_name,
             (job_progress, task, overall_progress, overall_task)
@@ -466,17 +419,8 @@ def validate_and_download(url, job_progress, overall_progress):
             soup, validated_url, download_path, job_progress, overall_progress
         )
 
-    except RequestsConnectionError:
-        print(f"Connection error: Unable to reach {validated_url}.")
-
-    except Timeout:
-        print(f"Timeout error: The request to {validated_url} timed out.")
-
-    except RequestException as req_err:
-        print(f"Request error: {req_err}")
-
-    except ValueError as val_err:
-        print(f"Value error: {val_err}")
+    except (RequestsConnectionError, Timeout, RequestException) as err:
+        print(f"Error downloading the from {validated_url}: {err}.")
 
 def main():
     """
