@@ -4,12 +4,6 @@ validate them, and download the associated content. It manages the entire
 download process by leveraging asynchronous operations, allowing for
 efficient handling of multiple URLs.
 
-Key Features:
-    - Reads a list of URLs from a text file.
-    - Validates each URL and downloads content asynchronously.
-    - Maintains a session log for tracking download status.
-    - Cleans up the URLs file and session log upon completion.
-
 Usage:
 To run the module, execute the script directly. It will process URLs
 listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
