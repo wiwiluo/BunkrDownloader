@@ -4,6 +4,8 @@ servers from the Bunkr status page.
 """
 
 import sys
+from urllib.parse import urlparse
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -15,31 +17,6 @@ HEADERS = {
         "Gecko/20100101 Firefox/117.0"
     )
 }
-
-KB = 1024
-MB = 1024 * KB
-
-def get_chunk_size(file_size):
-    """
-    Determines the optimal chunk size based on the file size.
-
-    Args:
-        file_size (int): The size of the file in bytes.
-
-    Returns:
-        int: The optimal chunk size in bytes.
-    """
-    thresholds = [
-        (MB, 16 * KB),        # Less than 1 MB
-        (10 * MB, 64 * KB),   # Less than 10 MB
-        (100 * MB, 256 * KB), # Less than 100 MB
-    ]
-
-    for threshold, chunk_size in thresholds:
-        if file_size < threshold:
-            return chunk_size
-
-    return 512 * KB
 
 def check_url_type(url):
     """
@@ -198,6 +175,26 @@ def get_non_operational_servers():
         name: status
         for name, status in status_dict.items() if status != "Operational"
     }
+
+def subdomain_is_non_operational(download_link):
+    """
+    Checks if the subdomain of the given download link is non-operational.
+
+    Args:
+        download_link (str): The URL from which the subdomain will be extracted.
+
+    Returns:
+        bool: True if the subdomain is non-operational, False otherwise.
+    """
+    non_operational_servers = get_non_operational_servers()
+
+    netloc = urlparse(download_link).netloc
+    subdomain = netloc.split('.')[0].capitalize()
+
+    if subdomain in non_operational_servers:
+        return True
+
+    return False
 
 def main():
     """
