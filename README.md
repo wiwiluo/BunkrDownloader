@@ -24,13 +24,14 @@
 ```
 project-root/
 ├── helpers/
-│ ├── bunkr_utils.py            # Python script to fetch the Bunkr status
-│ ├── progress_utils.py         # Python script containing progress utility
-│ └── playwright_downloader.py  # Python script to download single media using Playwright
-├── downloader.py               # Python script to download from a Bunkr URL
-├── main.py                     # Main Python script to run the downloader
-├── URLs.txt                    # Text file containing album URLs
-└── session_log.txt             # File for temporary data storage
+│   ├── download_utils.py         # Script providing functions to handle the download process
+│   ├── bunkr_utils.py            # Script for checking Bunkr status and URL validation
+│   ├── progress_utils.py         # Script with functions to create and manage progress indicators
+│   └── playwright_downloader.py  # Module that utilizes Playwright to automate media downloads from Bunkr
+├── downloader.py                 # Main script for initiating downloads from specified Bunkr URLs
+├── main.py                       # Entry point script that orchestrates the downloader process
+├── URLs.txt                      # Text file listing album URLs to be downloaded
+└── session_log.txt               # Log file for recording session details
 ```
 
 ## Installation
