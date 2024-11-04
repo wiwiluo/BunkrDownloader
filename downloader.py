@@ -15,13 +15,13 @@ import time
 from http.client import RemoteDisconnected
 
 import requests
+from bs4 import BeautifulSoup
+from rich.live import Live
 from requests.exceptions import (
     ConnectionError as RequestsConnectionError,
     Timeout,
     RequestException
 )
-from bs4 import BeautifulSoup
-from rich.live import Live
 
 from helpers.download_utils import save_file_with_progress
 from helpers.progress_utils import (
