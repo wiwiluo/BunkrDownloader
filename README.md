@@ -6,10 +6,11 @@
 
 ## Features
 
-- Download pictures and videos from specified URLs.
-- Handles both single file and album downloads.
-- Logs URLs that encounter errors for troubleshooting.
+- Downloads pictures, videos and albums from specified URLs.
+- Supports batch downloading via a list of URLs.
 - Progress indication during downloads.
+- Automatically creates a directory structure for organized storage.
+- Logs URLs that encounter errors for troubleshooting.
 
 ## Dependencies
 
@@ -58,7 +59,7 @@ To download a single media from an URL, you can use `downloader.py`, running the
 
 ### Usage
 ```bash
-python3 downloader.py <bunkr_media_url>
+python3 downloader.py <bunkr_url>
 ```
 
 ### Example
@@ -68,7 +69,7 @@ python3 downloader.py https://bunkr.si/a/PUK068QE
 
 ## Batch Download
 
-To batch download media from multiple URLs, you can use the `main.py` script. This script reads URLs from a file named `URLs.txt` and downloads each one using the media downloader.
+To batch download from multiple URLs, you can use the `main.py` script. This script reads URLs from a file named `URLs.txt` and downloads each one using the media downloader.
 
 ### Usage
 
