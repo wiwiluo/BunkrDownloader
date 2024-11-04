@@ -7,6 +7,7 @@ inputting the media URL, and extracting the download link.
 
 import re
 import time
+
 from playwright.sync_api import (
     sync_playwright,
     TimeoutError as PlaywrightTimeoutError
@@ -15,6 +16,7 @@ from playwright.sync_api import (
 SESSION_LOG = 'session_log.txt'
 TIMEOUT = 5000
 
+# https://goonlinetools.com/online-image-downloader/
 CONFIG = {
     'url': "https://9xbuddy.in/en",
     'input_selector': "input.w-full",
