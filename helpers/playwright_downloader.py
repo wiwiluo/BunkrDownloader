@@ -38,7 +38,6 @@ def wait_and_extract_download_link(
         page: The Playwright page object.
         download_button_selector (str): The CSS selector for the download
                                         button.
-        timeout (int): The maximum time to wait for the selector.
         attribute (str): The attribute to retrieve from the
                          element (e.g., 'src', 'href').
 
@@ -59,20 +58,6 @@ def write_on_session_log(url):
     """
     with open(SESSION_LOG, 'a', encoding='utf-8') as file:
         file.write(f"{url}\n")
-
-#def log_ddos_blocked_request(download_link, url):
-#    """
-#    Logs requests blocked by DDoSGuard.
-
-#    Args:
-#        download_link (str): The link being checked for DDoSGuard blocks.
-#        url (str): The original URL that was requested.
-#    """
-#    if "cloudfl" in download_link:
-#        print(
-#            f"DDoSGuard blocked the request to {url}, check the log file"
-#        )
-#        write_on_session_log(url)
 
 def run(playwright, url):
     """
@@ -102,13 +87,11 @@ def run(playwright, url):
             CONFIG['download_button'],
             CONFIG['attribute']
         )
-
-#        log_ddos_blocked_request(download_link, CONFIG['url'])
         return download_link
 
     except PlaywrightTimeoutError:
         print(
-            "\t[#] This page has no download link or temporarily blocked, "
+            "This page has no download link or temporarily blocked, "
             "check the log file"
         )
         write_on_session_log(url)
@@ -132,7 +115,6 @@ def clean_filename(filename):
     Returns:
         str: The cleaned filename with the appropriate extension.
     """
-    # Regular expression to find the pattern before the last part
     match = re.match(r'^(.*?)(_.*?)(?:\+%7C.+)?$', filename)
     if match:
         base = match.group(1)
@@ -143,15 +125,26 @@ def clean_filename(filename):
 
 def extract_media_download_link(url, item_type, retries=3):
     """
-    Extracts the download link for the specified media type.
+    Extracts the download link for a specific media item (either a picture or a
+    video) from the given URL using Playwright. The function handles retries in
+    case of failures.
 
     Args:
-        url (str): The URL of the media to download.
-        item_type (str): The type of item to download ('picture' or 'video').
+        url (str): The URL of the media page to extract the download link from.
+        item_type (str): The type of media to download. Should be either
+                         'picture' or 'video'.
+        retries (int): The number of attempts to retry in case of failures
+                       (default is 3).
 
     Returns:
-        str or None: The download link if successful, or None if an error
-                     occurs.
+        tuple: A tuple containing:
+            - filename (str): The cleaned filename derived from the download
+                              link.
+            - download_link (str): The extracted download link for the media.
+
+    Raises:
+        PlaywrightTimeoutError: If Playwright encounters a timeout error during
+                                execution.
     """
     url = url.replace('/i/', '/v/') if item_type == 'picture' else url
 
@@ -162,7 +155,7 @@ def extract_media_download_link(url, item_type, retries=3):
                 if download_link:
                     filename = download_link.split('customName=')[-1]
                     filename = clean_filename(filename)
-                    return (filename, download_link)
+                    return (download_link, filename)
 
             except PlaywrightTimeoutError:
                 if attempt < retries - 1:
@@ -179,7 +172,8 @@ def main():
     download_info = extract_media_download_link(picture_url, 'picture')
     print(f"Download info: {download_info}")
 
-    video_url = "https://bunkr.fi/v/5EpJtKRGzLXfd"
+#    video_url = "https://bunkr.fi/v/5EpJtKRGzLXfd"
+    video_url = "https://bunkrrr.org/v/Joshiochi!-2-Kai---05-lOtyGkjQ.mkv"
     print(f"\nDownloading from video URL: {video_url}")
     download_info = extract_media_download_link(video_url, 'video')
     print(f"Download link: {download_info}")
