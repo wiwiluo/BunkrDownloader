@@ -11,6 +11,7 @@ Usage:
 
 import os
 import sys
+import random
 import time
 from http.client import RemoteDisconnected
 
@@ -29,7 +30,7 @@ from helpers.progress_utils import (
 )
 from helpers.bunkr_utils import (
     check_url_type, get_album_id, validate_item_page, get_item_type,
-    subdomain_is_non_operational
+    subdomain_is_non_operational, get_identifier
 )
 from helpers.playwright_downloader import (
     extract_media_download_link, write_on_session_log
@@ -48,7 +49,8 @@ HEADERS = {
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
         "Gecko/20100101 Firefox/117.0"
     ),
-    "REFERER": 'https://get.bunkrr.su/'
+    "Connection": "keep-alive",
+    "Referer": "https://get.bunkrr.su/"
 }
 
 def handle_response(url, response):
@@ -75,25 +77,26 @@ def handle_response(url, response):
 
     return BeautifulSoup(response.text, 'html.parser')
 
-def fetch_page(url, retries=3):
+def fetch_page(url, retries=5):
     """
-    Fetches the HTML content of a page at the given URL, retrying if necessary.
+    Fetches the HTML content of a page at the given URL, with retry logic and
+    exponential backoff.
 
     Args:
-        url (str): The URL of the page to fetch. This should be a valid URL
+        url (str): The URL of the page to fetch. This should be a valid URL 
                    pointing to a webpage.
         retries (int, optional): The number of retry attempts in case of failure
-                                 (default is 3). Each retry will occur after a
-                                 short delay.
+                                 (default is 5).
 
     Returns:
-        BeautifulSoup: A BeautifulSoup object containing the parsed HTML content
-                       of the page. Returns `None` if the page cannot be fetched
-                       after the specified number of retries.
+        BeautifulSoup: A BeautifulSoup object containing the parsed HTML
+                       content of the page.
 
     Raises:
         requests.RequestException: If there are issues with the HTTP request,
                                    such as network problems or invalid URLs.
+        RemoteDisconnected: If the remote server closes the connection without
+                            sending a response.
     """
     for attempt in range(retries):
         try:
@@ -106,7 +109,10 @@ def fetch_page(url, retries=3):
                 "Remote end closed connection without response. "
                 f"Retrying in a moment... ({attempt + 1}/{retries})"
             )
-            time.sleep(5)
+            if attempt < retries - 1:
+                # Add jitter to avoid a retry storm
+                backoff_time = (2 ** (attempt + 1)) + random.uniform(0, 1)
+                time.sleep(backoff_time)
 
         except requests.RequestException as req_err:
             print(f"Request error for {url}: {req_err}")
@@ -114,7 +120,7 @@ def fetch_page(url, retries=3):
 
     return None
 
-def extract_via_playwright(url):
+def extract_with_playwright(url):
     """
     Initiates the download process for the specified URL using Playwright.
 
@@ -220,29 +226,6 @@ def download(download_link, download_path, file_name, task_info, retries=3):
         except requests.RequestException as req_err:
             handle_request_exception(req_err, attempt, retries)
 
-def get_identifier(url):
-    """
-    Extracts individual item pages (URLs) from the parsed HTML content.
-
-    Args:
-        soup (BeautifulSoup): The parsed HTML content of the page.
-
-    Returns:
-        list: A list of URLs pointing to individual item pages.
-
-    Raises:
-        AttributeError: If there is an error accessing the required HTML
-                        attributes (e.g., missing or malformed tags).
-    """
-    try:
-        is_album = check_url_type(url)
-        return get_album_id(url) if is_album else url.split('/')[-1]
-
-    except IndexError as indx_err:
-        print(f"Error extracting the identifier: {indx_err}")
-
-    return url
-
 def extract_item_pages(soup):
     """
     Extracts individual item page URLs from the parsed HTML content.
@@ -326,7 +309,7 @@ def get_download_info(item_soup, item_page):
     """
     validated_item_page = validate_item_page(item_page)
     if item_soup is None:
-        return extract_via_playwright(validated_item_page)
+        return extract_with_playwright(validated_item_page)
 
     item_type = get_item_type(validated_item_page)
     item_download_link = get_item_download_link(item_soup, item_type)
