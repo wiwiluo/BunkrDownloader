@@ -20,8 +20,8 @@ def get_chunk_size(file_size):
         (1 * MB, 16 * KB),     # Less than 1 MB
         (10 * MB, 64 * KB),    # 1 MB to 10 MB
         (50 * MB, 128 * KB),   # 10 MB to 50 MB
-        (100 * MB, 256 * MB),  # 50 MB to 100 MB
-        (250 * MB, 512 * MB),  # 100 MB to 250 MB
+        (100 * MB, 256 * KB),  # 50 MB to 100 MB
+        (250 * MB, 512 * KB),  # 100 MB to 250 MB
     ]
 
     for threshold, chunk_size in thresholds:
