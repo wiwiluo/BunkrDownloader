@@ -75,7 +75,7 @@ def handle_response(url, response):
 
     return BeautifulSoup(response.text, 'html.parser')
 
-def fetch_page(url, retries=3, read_timeout=20):
+def fetch_page(url, retries=3):
     """
     Fetches the HTML content of a page at the given URL, retrying if necessary.
 
@@ -97,7 +97,7 @@ def fetch_page(url, retries=3, read_timeout=20):
     """
     for attempt in range(retries):
         try:
-            response = SESSION.get(url, timeout=(TIMEOUT, read_timeout))
+            response = SESSION.get(url, timeout=TIMEOUT)
             response.raise_for_status()
             return handle_response(url, response)
 
@@ -109,7 +109,7 @@ def fetch_page(url, retries=3, read_timeout=20):
             time.sleep(5)
 
         except requests.RequestException as req_err:
-            print(f"Request error: {req_err}")
+            print(f"Request error for {url}: {req_err}")
             return None
 
     return None
