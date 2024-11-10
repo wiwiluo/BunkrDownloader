@@ -5,13 +5,13 @@ download process by leveraging asynchronous operations, allowing for
 efficient handling of multiple URLs.
 
 Usage:
-To run the module, execute the script directly. It will process URLs
-listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
+    To run the module, execute the script directly. It will process URLs
+    listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
 from rich.live import Live
 
-from downloader import validate_and_download
+from downloader import validate_and_download, clear_terminal
 from helpers.progress_utils import create_progress_bar, create_progress_table
 
 FILE = 'URLs.txt'
@@ -65,6 +65,7 @@ def main():
     Clears the session log, reads URLs from a file, processes them,
     and clears the URLs file at the end.
     """
+    clear_terminal()
     write_file(SESSION_LOG)
 
     urls = read_file(FILE)
