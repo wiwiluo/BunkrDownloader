@@ -5,8 +5,8 @@ This tool supports both single file and album downloads, while also logging any
 issues encountered during the download process.
 
 Usage:
-Run the script from the command line with a valid album or media URL:
-    python3 downloader.py <album_or_media_url>
+    Run the script from the command line with a valid album or media URL:
+        python3 downloader.py <album_or_media_url>
 """
 
 import os
@@ -75,22 +75,29 @@ def handle_response(url, response):
 
     return BeautifulSoup(response.text, 'html.parser')
 
-def fetch_page(url, retries=3):
+def fetch_page(url, retries=3, read_timeout=20):
     """
-    Fetches the HTML content of a page at the given URL.
+    Fetches the HTML content of a page at the given URL, retrying if necessary.
 
     Args:
-        url (str): The URL to fetch.
+        url (str): The URL of the page to fetch. This should be a valid URL
+                   pointing to a webpage.
+        retries (int, optional): The number of retry attempts in case of failure
+                                 (default is 3). Each retry will occur after a
+                                 short delay.
 
     Returns:
-        BeautifulSoup: Parsed HTML content of the page.
+        BeautifulSoup: A BeautifulSoup object containing the parsed HTML content
+                       of the page. Returns `None` if the page cannot be fetched
+                       after the specified number of retries.
 
     Raises:
-        requests.RequestException: If there are issues with the request.
+        requests.RequestException: If there are issues with the HTTP request,
+                                   such as network problems or invalid URLs.
     """
     for attempt in range(retries):
         try:
-            response = SESSION.get(url, timeout=TIMEOUT)
+            response = SESSION.get(url, timeout=(TIMEOUT, read_timeout))
             response.raise_for_status()
             return handle_response(url, response)
 
@@ -107,7 +114,7 @@ def fetch_page(url, retries=3):
 
     return None
 
-def run(url):
+def extract_via_playwright(url):
     """
     Initiates the download process for the specified URL using Playwright.
 
@@ -118,7 +125,6 @@ def run(url):
         str or None: The download link if successful, or None if an error
                      occurs.
     """
-#    print("Downloading with Playwright...")
     item_type = get_item_type(url)
     media_type_mapping = {'v': 'video', 'i': 'picture'}
 
@@ -134,13 +140,18 @@ def run(url):
 
 def create_download_directory(url):
     """
-    Creates the download directory if it does not already exist.
+    Creates a download directory based on the provided URL if it does not
+    already exist.
 
     Args:
-        download_path (str): The path of the directory to create.
+        url (str): The URL to be processed to create the download directory.
+
+    Returns:
+        str: The path of the download directory that was created or found.
 
     Raises:
-        SystemExit: If there is an error creating the directory.
+        SystemExit: If there is an error creating the directory, the program
+                    exits.
     """
     album_id = get_album_id(url) if check_url_type(url) else None
     download_path = os.path.join(DOWNLOAD_FOLDER, album_id) if album_id \
@@ -163,21 +174,29 @@ def handle_request_exception(req_err, attempt, retries):
             "Too many requests. "
             f"Retrying in a moment... ({attempt + 1}/{retries})"
         )
-        time.sleep(10)
+        time.sleep(20)
     else:
         print(f"Error during download: {req_err}")
 
 def download(download_link, download_path, file_name, task_info, retries=3):
     """
-    Downloads a file from the given download link to the specified path.
+    Downloads a file from the specified download link and saves it to the given
+    directory with the provided file name.
 
     Args:
         download_link (str): The URL to download the file from.
-        download_path (str): The directory to save the downloaded file.
-        file_name (str): The name to save the file as.
+        download_path (str): The directory where the file will be saved.
+        file_name (str): The name to save the downloaded file as.
+        task_info (tuple): A tuple containing progress tracking information:
+            - job_progress: The progress bar object for tracking the download.
+            - task: The specific task being tracked.
+            - overall_task: The overall task tracking the progress of download
+                            process.
+        retries (int, optional): The number of retry attempts if the download
+                                 fails (default is 3).
 
     Raises:
-        requests.RequestException: If there are issues during the download.
+        requests.RequestException: If there are issues with the HTTP request.
     """
     if subdomain_is_non_operational(download_link):
         print("Non-operational subdomain; check the log file")
@@ -186,7 +205,6 @@ def download(download_link, download_path, file_name, task_info, retries=3):
 
     final_path = os.path.join(download_path, file_name)
     (_, _, overall_progress, overall_task) = task_info
-
     for attempt in range(retries):
         try:
             response = SESSION.get(
@@ -202,21 +220,19 @@ def download(download_link, download_path, file_name, task_info, retries=3):
         except requests.RequestException as req_err:
             handle_request_exception(req_err, attempt, retries)
 
-    # Update overall progress if download was successful
-#    if attempt < retries:
-#        overall_progress.advance(overall_task)
-
 def get_identifier(url):
     """
-    Extracts an identifier from the given URL. If the URL represents an album,
-    it retrieves the album ID; otherwise, it returns the last segment of the
-    URL.
+    Extracts individual item pages (URLs) from the parsed HTML content.
 
     Args:
-        url (str): The URL from which to extract the identifier.
+        soup (BeautifulSoup): The parsed HTML content of the page.
 
     Returns:
-        str: The extracted identifier or the original URL in case of an error.
+        list: A list of URLs pointing to individual item pages.
+
+    Raises:
+        AttributeError: If there is an error accessing the required HTML
+                        attributes (e.g., missing or malformed tags).
     """
     try:
         is_album = check_url_type(url)
@@ -228,15 +244,20 @@ def get_identifier(url):
     return url
 
 def extract_item_pages(soup):
-
     """
-    Extracts individual item pages from the parsed HTML soup.
+    Extracts individual item page URLs from the parsed HTML content.
 
     Args:
-        soup (BeautifulSoup): Parsed HTML content of the page.
+        soup (BeautifulSoup): The BeautifulSoup object representing the parsed
+                              HTML content of the page.
 
     Returns:
-        list: A list of item page URLs.
+        list: A list of URLs (strings) for individual item pages. If no item
+              pages are found or an error occurs, an empty list is returned.
+
+    Raises:
+        AttributeError: If there is an error accessing the required attributes
+                        of the HTML elements, such as missing or malformed tags.
     """
     try:
         items = soup.find_all(
@@ -249,23 +270,29 @@ def extract_item_pages(soup):
         return [item['href'] for item in items]
 
     except AttributeError as attr_err:
-        print(f"\t\t[-] Error extracting item pages: {attr_err}")
+        print(f"Error extracting item pages: {attr_err}")
 
     return []
 
 def get_item_download_link(item_soup, item_type):
     """
-    Retrieves the download link from the item soup based on its type.
+    Retrieves the download link for a specific item (video or picture) from its
+    HTML content.
 
     Args:
-        item_soup (BeautifulSoup): Parsed HTML content of the item.
-        item_type (str): The type of item ('v' for video, 'd' for picture).
+        item_soup (BeautifulSoup): The BeautifulSoup object representing the
+                                   parsed HTML content of the item.
+        item_type (str): The type of the item.
 
     Returns:
-        str: The download link for the item.
+        str: The download link (URL) for the item. Returns `None` if the link
+             cannot be found.
 
     Raises:
-        AttributeError: If the source cannot be found in the soup.
+        AttributeError: If the required `src` attribute is not found for the
+                        specified `item_type`.
+        UnboundLocalError: If there is an issue with the assignment of
+                           `item_container` in the case of unknown `item_type`.
     """
     try:
         if item_type in ('v', 'd'):
@@ -299,10 +326,11 @@ def get_download_info(item_soup, item_page):
     """
     validated_item_page = validate_item_page(item_page)
     if item_soup is None:
-        return run(validated_item_page)
+        return extract_via_playwright(validated_item_page)
 
     item_type = get_item_type(validated_item_page)
     item_download_link = get_item_download_link(item_soup, item_type)
+
     item_file_name = item_download_link.split('/')[-1] \
         if item_download_link else None
 
@@ -331,14 +359,23 @@ def download_album(
     album_id, item_pages, download_path, overall_progress, job_progress
 ):
     """
-    Downloads all items in an album from a list of item pages.
+    Downloads all items in an album from a list of item pages and tracks the
+    download progress.
 
     Args:
-        item_pages (list): A list of item page URLs.
-        download_path (str): The path to save the downloaded files.
-
+        album_id (str): The unique identifier for the album being downloaded.
+        item_pages (list): A list of URLs corresponding to each item to be
+                           downloaded.
+        download_path (str): The local directory path where the downloaded files
+                             will be saved.
+        overall_progress (Progress): The overall progress tracker that manages
+                                     all tasks related to the album.
+        job_progress (Progress): A progress tracker specifically for individual 
+                                 item downloads.
+    
     Raises:
-        TypeError: If there is an error during the download process.
+        TypeError: If there is an issue during the download process, such as an
+                   invalid type being passed.
     """
     num_items = len(item_pages)
     overall_task = overall_progress.add_task(
@@ -354,7 +391,6 @@ def download_album(
             item_page, download_path,
             (job_progress, task, overall_progress, overall_task)
         )
-
         active_tasks.append(task)
 
         # Remove the oldest active task and update
@@ -370,13 +406,22 @@ def handle_download_process(
     soup, url, download_path, job_progress, overall_progress
 ):
     """
-    Handles the download process for a given URL, determining if it's an album
-    or a single file.
+    Handles the download process for a given URL, determining whether the URL 
+    corresponds to an album or a single file, and then initiating the
+    appropriate download method.
 
     Args:
-        soup (BeautifulSoup): Parsed HTML content of the main page.
+        soup (BeautifulSoup): The parsed HTML content of the main page.
         url (str): The URL of the media to download.
-        download_path (str): The path to save the downloaded files.
+        download_path (str): The local path where the downloaded files will be
+                             saved.
+        job_progress (Progress): A progress object for tracking individual
+                                 download tasks.
+        overall_progress (Progress): A progress object for tracking the overall
+                                     download process.
+
+    Raises:
+        TypeError: If there is an issue with the download type.
     """
     is_album = check_url_type(url)
     identifier = get_identifier(url)
@@ -393,6 +438,7 @@ def handle_download_process(
             f"[{TASK_COLOR}]{truncate_description(identifier)}", total=1
         )
         task = job_progress.add_task(f"[{TASK_COLOR}]Progress", total=100)
+
         download(
             download_link, download_path, file_name,
             (job_progress, task, overall_progress, overall_task)
@@ -401,10 +447,15 @@ def handle_download_process(
 
 def validate_and_download(url, job_progress, overall_progress):
     """
-    Validates the given URL and orchestrates the download process.
+    Validates the given URL, checks its correctness, and orchestrates the
+    download process.
 
     Args:
         url (str): The URL to validate and download content from.
+        job_progress (Progress): The progress tracker for individual download
+                                 tasks.
+        overall_progress (Progress): The overall progress tracker for the entire
+                                     download process.
 
     Raises:
         ValueError: If there is an issue with the URL or during the download
@@ -421,6 +472,19 @@ def validate_and_download(url, job_progress, overall_progress):
 
     except (RequestsConnectionError, Timeout, RequestException) as err:
         print(f"Error downloading the from {validated_url}: {err}.")
+
+def clear_terminal():
+    """
+    Clears the terminal screen based on the operating system.
+    """
+    commands = {
+        'nt': 'cls',      # Windows
+        'posix': 'clear'  # macOS and Linux
+    }
+
+    command = commands.get(os.name)
+    if command:
+        os.system(command)
 
 def main():
     """
@@ -441,6 +505,7 @@ def main():
         print(f"Usage: python3 {SCRIPT_NAME} <album_url>")
         sys.exit(1)
 
+    clear_terminal()
     url = sys.argv[1]
 
     overall_progress = create_progress_bar()
