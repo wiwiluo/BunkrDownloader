@@ -16,7 +16,6 @@ from playwright.sync_api import (
 SESSION_LOG = 'session_log.txt'
 TIMEOUT = 5000
 
-# https://goonlinetools.com/online-image-downloader/
 CONFIG = {
     'url': "https://9xbuddy.in/en",
     'input_selector': "input.w-full",
@@ -146,20 +145,24 @@ def extract_media_download_link(url, item_type, retries=3):
         PlaywrightTimeoutError: If Playwright encounters a timeout error during
                                 execution.
     """
-    url = url.replace('/i/', '/v/') if item_type == 'picture' else url
+    validated_url = url.replace('/i/', '/v/') if item_type == 'picture' else url
 
     with sync_playwright() as playwright:
         for attempt in range(retries):
             try:
-                download_link = run(playwright, url)
+                download_link = run(playwright, validated_url)
                 if download_link:
-                    filename = download_link.split('customName=')[-1]
+                    filename = download_link.split("customName=")[-1]
                     filename = clean_filename(filename)
                     return (download_link, filename)
 
             except PlaywrightTimeoutError:
+                print(
+                    "No download link found through Playwright... "
+                    f"({attempt + 1}/{retries})"
+                )
                 if attempt < retries - 1:
-                    time.sleep(1)
+                    time.sleep(3)
 
     return None, None
 
@@ -167,16 +170,19 @@ def main():
     """
     Tests the media download link extraction for both picture and video URLs.
     """
-    picture_url = "https://bunkr.fi/i/YddngfgJd0cna"
-    print(f"\nDownloading from picture URL: {picture_url}")
-    download_info = extract_media_download_link(picture_url, 'picture')
-    print(f"Download info: {download_info}")
+    def test_module(url, media_type):
+        print(f"\nExtracting download info from URL: {url}")
+        download_link, filename = extract_media_download_link(url, media_type)
+        print(
+            f"Download link: {download_link}\n"
+            f"File name: {filename}"
+        )
 
-#    video_url = "https://bunkr.fi/v/5EpJtKRGzLXfd"
-    video_url = "https://bunkrrr.org/v/Joshiochi!-2-Kai---05-lOtyGkjQ.mkv"
-    print(f"\nDownloading from video URL: {video_url}")
-    download_info = extract_media_download_link(video_url, 'video')
-    print(f"Download link: {download_info}")
+    picture_url = "https://bunkr.fi/i/YddngfgJd0cna"
+    test_module(picture_url, 'picture')
+
+    video_url = "https://bunkr.fi/v/5EpJtKRGzLXfd"
+    test_module(video_url, 'video')
 
 if __name__ == '__main__':
     main()

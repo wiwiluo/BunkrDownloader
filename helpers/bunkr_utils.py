@@ -18,6 +18,29 @@ HEADERS = {
     )
 }
 
+def get_identifier(url):
+    """
+    Extracts individual item pages (URLs) from the parsed HTML content.
+
+    Args:
+        soup (BeautifulSoup): The parsed HTML content of the page.
+
+    Returns:
+        list: A list of URLs pointing to individual item pages.
+
+    Raises:
+        AttributeError: If there is an error accessing the required HTML
+                        attributes (e.g., missing or malformed tags).
+    """
+    try:
+        is_album = check_url_type(url)
+        return get_album_id(url) if is_album else url.split('/')[-1]
+
+    except IndexError as indx_err:
+        print(f"Error extracting the identifier: {indx_err}")
+
+    return url
+
 def check_url_type(url):
     """
     Determines whether the provided URL corresponds to an album or a single
