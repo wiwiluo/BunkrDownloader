@@ -214,7 +214,7 @@ def download(download_link, download_path, file_name, task_info, retries=3):
     for attempt in range(retries):
         try:
             response = SESSION.get(
-                download_link, stream=True, headers=HEADERS, timeout=TIMEOUT
+                download_link, stream=True, headers=HEADERS, timeout=90
             )
             response.raise_for_status()
 
