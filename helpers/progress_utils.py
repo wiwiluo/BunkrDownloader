@@ -23,15 +23,17 @@ def truncate_description(description, max_length=8):
 
     Args:
         description (str): The string to be truncated.
-        max_length (int): The maximum length of the returned string. 
+        max_length (int): The maximum length of the returned string.
                           Default is 8.
 
     Returns:
         str: The original string if its length is less than or equal to 
              `max_length`, otherwise the truncated string with an ellipsis.
     """
-    return description[:max_length] + "..." if len(description) > max_length \
+    return (
+        description[:max_length] + "..." if len(description) > max_length
         else description
+    )
 
 def create_progress_bar():
     """
@@ -60,7 +62,7 @@ def create_progress_table(overall_progress, job_progress):
 
     Returns:
         Table: A Rich Table object containing a grid layout with two panels:
-               one for overall progress and another for job-specific progress, 
+               one for overall progress and another for job-specific progress,
                each with styled titles and borders.
     """
     progress_table = Table.grid()
@@ -78,7 +80,7 @@ def create_progress_table(overall_progress, job_progress):
             border_style="medium_purple",
             padding=(1, 1),
             width=40
-        ),
+        )
     )
     return progress_table
 

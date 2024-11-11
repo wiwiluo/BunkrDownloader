@@ -28,7 +28,7 @@ def get_chunk_size(file_size):
         if file_size < threshold:
             return chunk_size
 
-    return 2 * MB
+    return 1 * MB
 
 def save_file_with_progress(response, download_path, task_info):
     """

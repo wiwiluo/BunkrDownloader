@@ -145,7 +145,9 @@ def extract_media_download_link(url, item_type, retries=3):
         PlaywrightTimeoutError: If Playwright encounters a timeout error during
                                 execution.
     """
-    validated_url = url.replace('/i/', '/v/') if item_type == 'picture' else url
+    validated_url = (
+        url.replace('/i/', '/v/') if item_type == 'picture' else url
+    )
 
     with sync_playwright() as playwright:
         for attempt in range(retries):

@@ -153,7 +153,8 @@ def fetch_page(url):
 
 def get_bunkr_status():
     """
-    Fetches the status of servers from the status page and returns a dictionary.
+    Fetches the status of servers from the status page and returns a
+    dictionary.
 
     Returns:
         dict: A dictionary where the keys are server names (str) and the 
@@ -204,7 +205,8 @@ def subdomain_is_non_operational(download_link):
     Checks if the subdomain of the given download link is non-operational.
 
     Args:
-        download_link (str): The URL from which the subdomain will be extracted.
+        download_link (str): The URL from which the subdomain will be
+                             extracted.
 
     Returns:
         bool: True if the subdomain is non-operational, False otherwise.
