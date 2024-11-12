@@ -38,31 +38,41 @@ project-root/
 ## Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/Lysagxra/SimpleBunkrDownloader.git
+
+```bash
+git clone https://github.com/Lysagxra/SimpleBunkrDownloader.git
+```
 
 2. Navigate to the project directory:
-   ```bash
-   cd SimpleBunkrDownloader
+
+```bash
+cd SimpleBunkrDownloader
+```
 
 3. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
+
+```bash
+pip install -r requirements.txt
+```
 
 4. Ensure you have Playwright installed and set up installing Firefox:
-   ```bash
-   playwright install firefox
+
+```bash
+playwright install firefox
+```
 
 ## Single Media Download
 
 To download a single media from an URL, you can use `downloader.py`, running the script with a valid album or media URL.
 
 ### Usage
+
 ```bash
 python3 downloader.py <bunkr_url>
 ```
 
 ### Example
+
 ```
 python3 downloader.py https://bunkr.si/a/PUK068QE
 ```
@@ -76,9 +86,11 @@ To batch download from multiple URLs, you can use the `main.py` script. This scr
 1. Create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
 
 2. Run the batch download script:
+
 ```
 python3 main.py
 ```
+
 3. The downloaded files will be saved in the `Downloads` directory.
 
 ## Logging
