@@ -13,6 +13,8 @@ from playwright.sync_api import (
     TimeoutError as PlaywrightTimeoutError
 )
 
+from helpers.file_utils import write_on_session_log
+
 SESSION_LOG = 'session_log.txt'
 TIMEOUT = 5000
 
@@ -47,16 +49,6 @@ def wait_and_extract_download_link(
     page.wait_for_selector(download_button_selector, timeout=TIMEOUT)
     element = page.query_selector(download_button_selector)
     return element.get_attribute(attribute) if element else None
-
-def write_on_session_log(url):
-    """
-    Appends a URL to the session log file.
-
-    Args:
-        url (str): The URL to log.
-    """
-    with open(SESSION_LOG, 'a', encoding='utf-8') as file:
-        file.write(f"{url}\n")
 
 def run(playwright, url):
     """
