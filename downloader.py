@@ -11,39 +11,32 @@ Usage:
 
 import os
 import sys
-import random
 import time
-from http.client import RemoteDisconnected
 
 import requests
-from bs4 import BeautifulSoup
 from rich.live import Live
 from requests.exceptions import (
-    ConnectionError as RequestsConnectionError,
-    Timeout,
-    RequestException
+    ConnectionError as RequestConnectionError,
+    Timeout, RequestException
 )
 
+from helpers.playwright_downloader import extract_media_download_link
+from helpers.file_utils import write_on_session_log
 from helpers.download_utils import save_file_with_progress
-from helpers.progress_utils import (
-    truncate_description, create_progress_bar, create_progress_table
-)
 from helpers.bunkr_utils import (
     check_url_type, get_album_id, validate_item_page, get_item_type,
     subdomain_is_non_operational, get_identifier
 )
-from helpers.playwright_downloader import (
-    extract_media_download_link, write_on_session_log
+from helpers.progress_utils import (
+    truncate_description, create_progress_bar, create_progress_table
+)
+from helpers.general_utils import (
+    fetch_page, create_download_directory, clear_terminal
 )
 
 SCRIPT_NAME = os.path.basename(__file__)
-DOWNLOAD_FOLDER = 'Downloads'
+TASK_COLOR = "light_cyan3"
 
-MAX_VISIBLE_TASKS = 4
-TASK_COLOR = 'light_cyan3'
-TIMEOUT = 10
-
-SESSION = requests.Session()
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
@@ -52,73 +45,6 @@ HEADERS = {
     "Connection": "keep-alive",
     "Referer": "https://get.bunkrr.su/"
 }
-
-def handle_response(url, response):
-    """
-    Processes the HTTP response and handles specific status codes.
-
-    Args:
-        url (str): The URL to fetch.
-        response (requests.Response): The HTTP response object to process.
-
-    Returns:
-        BeautifulSoup or None: A BeautifulSoup object if the response is 
-                               successful; otherwise, returns None if an
-                               error status code is encountered.
-    """
-    if response.status_code in (500, 403):
-        messages = {
-            500: f"Internal server error when fetching {url}",
-            403: f"DDoSGuard blocked the request to {url}"
-        }
-        print(f"{messages[response.status_code]}, check the log file")
-        write_on_session_log(url)
-        return None
-
-    return BeautifulSoup(response.text, 'html.parser')
-
-def fetch_page(url, retries=5):
-    """
-    Fetches the HTML content of a page at the given URL, with retry logic and
-    exponential backoff.
-
-    Args:
-        url (str): The URL of the page to fetch. This should be a valid URL 
-                   pointing to a webpage.
-        retries (int, optional): The number of retry attempts in case of
-                                 failure (default is 5).
-
-    Returns:
-        BeautifulSoup: A BeautifulSoup object containing the parsed HTML
-                       content of the page.
-
-    Raises:
-        requests.RequestException: If there are issues with the HTTP request,
-                                   such as network problems or invalid URLs.
-        RemoteDisconnected: If the remote server closes the connection without
-                            sending a response.
-    """
-    for attempt in range(retries):
-        try:
-            response = SESSION.get(url, timeout=TIMEOUT)
-            response.raise_for_status()
-            return handle_response(url, response)
-
-        except RemoteDisconnected:
-            print(
-                "Remote end closed connection without response. "
-                f"Retrying in a moment... ({attempt + 1}/{retries})"
-            )
-            if attempt < retries - 1:
-                # Add jitter to avoid a retry storm
-                backoff_time = (2 ** (attempt + 1)) + random.uniform(0, 1)
-                time.sleep(backoff_time)
-
-        except requests.RequestException as req_err:
-            print(f"Request error for {url}: {req_err}")
-            return None
-
-    return None
 
 def extract_with_playwright(url):
     """
@@ -143,26 +69,6 @@ def extract_with_playwright(url):
 
     media_type = media_type_mapping[item_type]
     return extract_media_download_link(url, media_type)
-
-def create_download_directory(url):
-    """
-    Creates a download directory based on the provided URL if it does not
-    already exist.
-
-    Args:
-        url (str): The URL to be processed to create the download directory.
-
-    Returns:
-        str: The path of the download directory that was created or found.
-    """
-    album_id = get_album_id(url) if check_url_type(url) else None
-    download_path = (
-        os.path.join(DOWNLOAD_FOLDER, album_id) if album_id
-        else DOWNLOAD_FOLDER
-    )
-
-    os.makedirs(download_path, exist_ok=True)
-    return download_path
 
 def handle_request_exception(req_err, attempt, retries):
     """
@@ -207,11 +113,13 @@ def download(download_link, download_path, file_name, task_info, retries=3):
         write_on_session_log(download_link)
         return
 
+    session = requests.Session()
     final_path = os.path.join(download_path, file_name)
     (_, _, overall_progress, overall_task) = task_info
+
     for attempt in range(retries):
         try:
-            response = SESSION.get(
+            response = session.get(
                 download_link, stream=True, headers=HEADERS, timeout=90
             )
             response.raise_for_status()
@@ -219,7 +127,8 @@ def download(download_link, download_path, file_name, task_info, retries=3):
             # Exit the loop if the download is successful
             save_file_with_progress(response, final_path, task_info)
             overall_progress.advance(overall_task)
-            break
+#            break
+            return
 
         except requests.RequestException as req_err:
             handle_request_exception(req_err, attempt, retries)
@@ -338,7 +247,7 @@ def process_item_download(item_page, download_path, task_info):
         download(item_download_link, download_path, item_file_name, task_info)
 
 def download_album(
-    album_id, item_pages, download_path, overall_progress, job_progress
+    album_id, item_pages, download_path, progress_info, visible_tasks=4
 ):
     """
     Downloads all items in an album from a list of item pages and tracks the
@@ -355,6 +264,7 @@ def download_album(
         job_progress (Progress): A progress tracker specifically for individual 
                                  item downloads.
     """
+    (overall_progress, job_progress) = progress_info
     num_items = len(item_pages)
     overall_task = overall_progress.add_task(
        f"[{TASK_COLOR}]{album_id}", total=num_items
@@ -372,7 +282,7 @@ def download_album(
         active_tasks.append(task)
 
         # Remove the oldest active task and update
-        if len(active_tasks) >= MAX_VISIBLE_TASKS:
+        if len(active_tasks) >= visible_tasks:
             oldest_task = active_tasks.pop(0)
             job_progress.update(oldest_task, visible=False)
 
@@ -405,7 +315,7 @@ def handle_download_process(
         item_pages = extract_item_pages(soup)
         download_album(
             identifier, item_pages, download_path,
-            overall_progress, job_progress
+            (overall_progress, job_progress)
         )
     else:
         (download_link, file_name) = get_download_info(soup, url)
@@ -436,45 +346,32 @@ def validate_and_download(url, job_progress, overall_progress):
     Raises:
         ValueError: If the URL is invalid or if there is an issue during the
                     download process.
-        RequestsConnectionError: If a network connection error occurs during
-                                 the download.
+        RequestConnectionError: If a network connection error occurs during
+                                the download.
         Timeout: If the request times out during the download.
         RequestException: If there is a generic request-related exception.
     """
     validated_url = validate_item_page(url)
     soup = fetch_page(validated_url)
+    album_id = (
+        get_album_id(validated_url) if check_url_type(validated_url)
+        else None
+    )
 
     try:
-        download_path = create_download_directory(validated_url)
+        download_path = create_download_directory(album_id)
         handle_download_process(
             soup, validated_url, download_path, job_progress, overall_progress
         )
 
-    except (RequestsConnectionError, Timeout, RequestException) as err:
+    except (RequestConnectionError, Timeout, RequestException) as err:
         print(f"Error downloading the from {validated_url}: {err}.")
-
-def clear_terminal():
-    """
-    Clears the terminal screen based on the operating system.
-    """
-    commands = {
-        'nt': 'cls',      # Windows
-        'posix': 'clear'  # macOS and Linux
-    }
-
-    command = commands.get(os.name)
-    if command:
-        os.system(command)
 
 def main():
     """
     This function checks the command-line arguments for the required album URL,
     validates the input, and initiates the download process for the specified
     URL.
-
-    Raises:
-        SystemExit: Exits the program if the incorrect number of command-line
-                    arguments is provided.
     """
     if len(sys.argv) != 2:
         print(f"Usage: python3 {SCRIPT_NAME} <album_url>")

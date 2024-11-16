@@ -11,37 +11,12 @@ Usage:
 
 from rich.live import Live
 
-from downloader import validate_and_download, clear_terminal
+from helpers.file_utils import read_file, write_file
 from helpers.progress_utils import create_progress_bar, create_progress_table
+from downloader import validate_and_download, clear_terminal
 
 FILE = 'URLs.txt'
 SESSION_LOG = 'session_log.txt'
-
-def read_file(filename):
-    """
-    Reads the contents of a file and returns a list of its lines.
-
-    Args:
-        filename (str): The path to the file to be read.
-
-    Returns:
-        list: A list of lines from the file, with newline characters removed.
-    """
-    with open(filename, 'r', encoding='utf-8') as file:
-        return file.read().splitlines()
-
-def write_file(filename, content=''):
-    """
-    Writes content to a specified file. If content is not provided, the file is
-    cleared.
-
-    Args:
-        filename (str): The path to the file to be written to.
-        content (str, optional): The content to write to the file. Defaults to
-                                 an empty string.
-    """
-    with open(filename, 'w', encoding='utf-8') as file:
-        file.write(content)
 
 def process_urls(urls):
     """
