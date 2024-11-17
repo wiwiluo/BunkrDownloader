@@ -146,18 +146,22 @@ def extract_media_download_link(url, item_type, retries=3):
             try:
                 download_link = run(playwright, validated_url)
                 if download_link:
-                    filename = download_link.split("customName=")[-1]
-                    filename = clean_filename(filename)
-                    return (download_link, filename)
+                    filename = clean_filename(
+                        download_link.split("customName=")[-1]
+                    )
+                    return download_link, filename
 
-            except PlaywrightTimeoutError:
                 print(
                     "No download link found through Playwright... "
                     f"({attempt + 1}/{retries})"
                 )
+
+            except PlaywrightTimeoutError:
+                print("Playwright timed out... ({attempt + 1}/{retries})")
                 if attempt < retries - 1:
                     time.sleep(3)
 
+    # This block executes if the loop completes without returning a result
     return None, None
 
 def main():

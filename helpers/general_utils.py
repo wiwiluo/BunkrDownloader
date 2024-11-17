@@ -18,30 +18,6 @@ from helpers.file_utils import write_on_session_log
 
 DOWNLOAD_FOLDER = "Downloads"
 
-def handle_response(url, response):
-    """
-    Processes the HTTP response and handles specific status codes.
-
-    Args:
-        url (str): The URL to fetch.
-        response (requests.Response): The HTTP response object to process.
-
-    Returns:
-        BeautifulSoup or None: A BeautifulSoup object if the response is 
-                               successful; otherwise, returns None if an
-                               error status code is encountered.
-    """
-    if response.status_code in (500, 403):
-        messages = {
-            500: f"Internal server error when fetching {url}",
-            403: f"DDoSGuard blocked the request to {url}"
-        }
-        print(f"{messages[response.status_code]}, check the log file")
-        write_on_session_log(url)
-        return None
-
-    return BeautifulSoup(response.text, 'html.parser')
-
 def fetch_page(url, retries=5):
     """
     Fetches the HTML content of a page at the given URL, with retry logic and
@@ -63,13 +39,27 @@ def fetch_page(url, retries=5):
         RemoteDisconnected: If the remote server closes the connection without
                             sending a response.
     """
-    session = requests.Session()
+    error_messages = {
+        500: f"Internal server error when fetching {url}",
+        403: f"DDoSGuard blocked the request to {url}"
+    }
+
+    def handle_response(response):
+        """Processes the HTTP response and handles specific status codes."""
+        if response.status_code in error_messages:
+            print(
+                f"{error_messages[response.status_code]}, check the log file"
+            )
+            write_on_session_log(url)
+            return None
+
+        return BeautifulSoup(response.text, 'html.parser')
 
     for attempt in range(retries):
         try:
-            response = session.get(url, timeout=10)
+            response = requests.Session().get(url, timeout=10)
             response.raise_for_status()
-            return handle_response(url, response)
+            return handle_response(response)
 
         except RemoteDisconnected:
             print(
