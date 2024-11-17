@@ -106,11 +106,9 @@ def download(download_link, download_path, file_name, task_info, retries=3):
                 # Retry the request
                 time.sleep(20)
                 return True
-        else:
-            # Do not retry, exit the loop
-            print(f"Error during download: {req_err}")
-            return False
 
+        # Do not retry, exit the loop
+        print(f"Error during download: {req_err}")
         return False
 
     if subdomain_is_non_operational(download_link):
@@ -251,9 +249,7 @@ def process_item_download(item_page, download_path, task_info):
     if item_download_link:
         download(item_download_link, download_path, item_file_name, task_info)
 
-def download_album(
-    album_id, item_pages, download_path, progress_info, visible_tasks=4
-):
+def download_album(album_id, item_pages, download_path, progress_info):
     """
     Downloads all items in an album from a list of item pages and tracks the
     download progress.
@@ -264,11 +260,19 @@ def download_album(
                            downloaded.
         download_path (str): The local directory path where the downloaded
                              files will be saved.
-        overall_progress (Progress): The overall progress tracker that manages
-                                     all tasks related to the album.
-        job_progress (Progress): A progress tracker specifically for individual 
-                                 item downloads.
+        progress_info (tuple): A tuple containing two progress trackers:
+            - overall_progress (Progress): The progress tracker for the entire
+                                           album's download process.
+            - job_progress (Progress): A progress tracker specifically for the
+                                       download of individual items.
+
     """
+    def remove_oldest_tasks(active_tasks, job_progress, visible_tasks=5):
+        """Remove the oldest active task and update its visibility."""
+        if len(active_tasks) >= visible_tasks:
+            oldest_task = active_tasks.pop(0)
+            job_progress.update(oldest_task, visible=False)
+
     (overall_progress, job_progress) = progress_info
     num_items = len(item_pages)
     overall_task = overall_progress.add_task(
@@ -284,12 +288,9 @@ def download_album(
             item_page, download_path,
             (job_progress, task, overall_progress, overall_task)
         )
-        active_tasks.append(task)
 
-        # Remove the oldest active task and update
-        if len(active_tasks) >= visible_tasks:
-            oldest_task = active_tasks.pop(0)
-            job_progress.update(oldest_task, visible=False)
+        active_tasks.append(task)
+        remove_oldest_tasks(active_tasks, job_progress)
 
     # Remove remaining tasks
     for remaining_task in active_tasks:
