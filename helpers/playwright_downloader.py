@@ -161,7 +161,7 @@ def extract_media_download_link(url, item_type, retries=3):
                 if attempt < retries - 1:
                     time.sleep(3)
 
-    # This block executes if the loop completes without returning a result
+    # This line executes if the loop completes without returning a result
     return None, None
 
 def main():
