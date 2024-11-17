@@ -70,24 +70,6 @@ def extract_with_playwright(url):
     media_type = media_type_mapping[item_type]
     return extract_media_download_link(url, media_type)
 
-def handle_request_exception(req_err, attempt, retries):
-    """
-    Handles exceptions raised during the download request.
-
-    Args:
-        req_err (requests.RequestException): The raised exception.
-        attempt (int): The current attempt number.
-        retries (int): The total number of allowed retries.
-    """
-    if req_err.response.status_code == 429:
-        print(
-            "Too many requests. "
-            f"Retrying in a moment... ({attempt + 1}/{retries})"
-        )
-        time.sleep(20)
-    else:
-        print(f"Error during download: {req_err}")
-
 def download(download_link, download_path, file_name, task_info, retries=3):
     """
     Downloads a file from the specified download link and saves it to the given
@@ -108,18 +90,40 @@ def download(download_link, download_path, file_name, task_info, retries=3):
     Raises:
         requests.RequestException: If there are issues with the HTTP request.
     """
+    def handle_request_exception(req_err, attempt, retries):
+        """Handles exceptions during the request and manages retries."""
+        if req_err.response is None:
+            # Do not retry, exit the loop
+            print(f"Request failed with no response: {req_err}")
+            return False
+
+        if req_err.response.status_code == 429:
+            print(
+                "Too many requests. Retrying in a moment... "
+                f"({attempt + 1}/{retries})"
+            )
+            if attempt < retries - 1:
+                # Retry the request
+                time.sleep(20)
+                return True
+        else:
+            # Do not retry, exit the loop
+            print(f"Error during download: {req_err}")
+            return False
+
+        return False
+
     if subdomain_is_non_operational(download_link):
-        print("Non-operational subdomain; check the log file")
+        print("Non-operational subdomain, check the log file")
         write_on_session_log(download_link)
         return
 
-    session = requests.Session()
     final_path = os.path.join(download_path, file_name)
     (_, _, overall_progress, overall_task) = task_info
 
     for attempt in range(retries):
         try:
-            response = session.get(
+            response = requests.get(
                 download_link, stream=True, headers=HEADERS, timeout=90
             )
             response.raise_for_status()
@@ -127,11 +131,12 @@ def download(download_link, download_path, file_name, task_info, retries=3):
             # Exit the loop if the download is successful
             save_file_with_progress(response, final_path, task_info)
             overall_progress.advance(overall_task)
-#            break
             return
 
         except requests.RequestException as req_err:
-            handle_request_exception(req_err, attempt, retries)
+            if not handle_request_exception(req_err, attempt, retries):
+                # Exit the loop if not retrying
+                return
 
 def extract_item_pages(soup):
     """

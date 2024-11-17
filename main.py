@@ -15,8 +15,8 @@ from helpers.file_utils import read_file, write_file
 from helpers.progress_utils import create_progress_bar, create_progress_table
 from downloader import validate_and_download, clear_terminal
 
-FILE = 'URLs.txt'
-SESSION_LOG = 'session_log.txt'
+FILE = "URLs.txt"
+SESSION_LOG = "session_log.txt"
 
 def process_urls(urls):
     """
