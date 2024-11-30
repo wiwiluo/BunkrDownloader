@@ -46,7 +46,7 @@ project-root/
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Lysagxra/SimpleBunkrDownloader.git
+git clone https://github.com/Lysagxra/BunkrDownloader.git
 ```
 
 2. Navigate to the project directory:
