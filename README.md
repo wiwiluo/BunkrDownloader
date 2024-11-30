@@ -74,7 +74,7 @@ To download a single media from an URL, you can use `downloader.py`, running the
 ### Usage
 
 ```bash
-python3 downloader.py <bunkr_media_url>
+python3 downloader.py <bunkr_url>
 ```
 
 ### Example
