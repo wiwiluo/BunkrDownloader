@@ -96,7 +96,6 @@ class Downloader:
             if attempt < self.retries - 1:
                 # Retry the request
                 delay = 4 ** (attempt + 1) + random.uniform(2, 4)
-                delay = 1
                 time.sleep(delay)
                 return True
 
