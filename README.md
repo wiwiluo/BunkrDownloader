@@ -6,7 +6,7 @@
 
 ## Features
 
-- Downloads pictures, videos and albums from specified URLs.
+- Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
 - Progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
@@ -25,12 +25,16 @@
 ```
 project-root/
 ├── helpers/
+│ ├── managers/
+│ │ ├── live_manager.py         # Manages a real-time live display
+│ │ ├── log_manager.py          # Manages real-time log updates
+│ │ └── progress_manager.py     # Manages progress bars
 │ ├── bunkr_utils.py            # Utilities for checking Bunkr status and URL validation
 │ ├── download_utils.py         # Utilities for managing the download process
 │ ├── file_utils.py             # Utilities for managing file operations
 │ ├── general_utils.py          # Miscellaneous utility functions
-│ ├── progress_utils.py         # Tools for progress tracking and reporting
-│ └── playwright_downloader.py  # Module that utilizes Playwright to automate media downloads from Bunkr
+│ ├── playwright_downloader.py  # Module that utilizes Playwright to automate downloads from Bunkr
+│ └── url_utils.py              # Utilities for Bunkr URLs
 ├── downloader.py               # Module for initiating downloads from specified Bunkr URLs
 ├── main.py                     # Main script to run the downloader
 ├── URLs.txt                    # Text file listing album URLs to be downloaded
@@ -70,7 +74,7 @@ To download a single media from an URL, you can use `downloader.py`, running the
 ### Usage
 
 ```bash
-python3 downloader.py <bunkr_url>
+python3 downloader.py <bunkr_media_url>
 ```
 
 ### Example
