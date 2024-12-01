@@ -49,18 +49,15 @@ class LiveManager:
     def add_overall_task(self, description, num_tasks):
         """Call ProgressManager to add an overall task."""
         self.progress_manager.add_overall_task(description, num_tasks)
-#        self.live.update(self.render_live_view())
 
     def add_task(self, current_task=0, total=100):
         """Call ProgressManager to add an individual task."""
         task_id = self.progress_manager.add_task(current_task, total)
-#        self.live.update(self.render_live_view())
         return task_id
 
     def update_task(self, task_id, completed=None, advance=0, visible=True):
         """Call ProgressManager to update an individual task."""
         self.progress_manager.update_task(task_id, completed, advance, visible)
-#        self.live.update(self.render_live_view())
 
     def update_log(self, event, details):
         """
