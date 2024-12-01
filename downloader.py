@@ -249,10 +249,10 @@ class AlbumDownloader:
 
     async def download_album(self, max_workers=5):
         """Main method to handle the album download."""
-        num_items = len(self.item_pages)
+        num_tasks = len(self.item_pages)
         self.live_manager.add_overall_task(
             description=self.album_id,
-            num_tasks=num_items
+            num_tasks=num_tasks
         )
 
         # Create tasks for downloading each item in the album
@@ -298,7 +298,7 @@ async def handle_download_process(
 
     else:
         (download_link, file_name) = await get_download_info(soup, url)
-        live_manager.add_overall_task(identifier, num_items=1)
+        live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
         downloader = MediaDownloader(
