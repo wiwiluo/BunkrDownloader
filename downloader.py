@@ -1,8 +1,6 @@
 """
-A Python-based Bunkr downloader that utilizes Playwright for browser automation
-to fetch and download from Bunkr albums and single file URLs.
-This tool supports both single file and album downloads, while also logging any
-issues encountered during the download process.
+Python-based downloader for Bunkr albums and files. Leverages Playwright for
+browser automation, supporting single-file and album downloads with error logging.
 
 Usage:
     Run the script from the command line with a valid album or media URL:
@@ -22,21 +20,20 @@ from requests.exceptions import (
     Timeout, RequestException
 )
 
-from helpers.playwright_crawler import extract_media_download_link
+from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
+from helpers.managers.live_manager import LiveManager
+from helpers.managers.log_manager import LoggerTable
+from helpers.managers.progress_manager import ProgressManager
 from helpers.download_utils import save_file_with_progress
 from helpers.file_utils import write_on_session_log
-from helpers.managers.log_manager import LoggerTable
-from helpers.managers.live_manager import LiveManager
-from helpers.managers.progress_manager import ProgressManager
-from helpers.url_utils import (
-    check_url_type, get_identifier, get_album_id,
-    validate_item_page, get_item_type
-)
 from helpers.bunkr_utils import (
     get_bunkr_status, subdomain_is_offline, mark_subdomain_as_offline
 )
 from helpers.general_utils import (
     fetch_page, create_download_directory, clear_terminal
+)
+from helpers.url_utils import (
+    check_url_type, get_identifier, get_album_id, validate_item_page
 )
 
 HEADERS = {
@@ -48,29 +45,24 @@ HEADERS = {
     "Referer": "https://get.bunkrr.su/"
 }
 
-class Downloader:
+class MediaDownloader:
     """
-    Manages the downloading of individual files from Bunkr URLs.
+    Manages the downloading of individual files from Bunkr URLs, with support
+    for retries and progress updates.
 
     Attributes:
-        bunkr_status (dict): Current status of Bunkr subdomains.
-        download_info (tuple): Contains the download link, download path,
-                               and file name for the current file.
-        progress_info (tuple): Contains the task ID and ProgressManager
-                               instance for managing progress.
-        retries (int): Number of retry attempts allowed for failed downloads.
+        bunkr_status (dict): Status of Bunkr subdomains.
+        download_path (str): Path where the file will be saved.
+        download_link (str): URL of the file to be downloaded.
+        file_name (str): Name of the file being downloaded.
+        task (str): Task ID associated with the file download.
+        live_manager (LiveManager): Handles live display of progress and logs.
+        retries (int): Maximum number of retry attempts for failed downloads.
     """
 
-    def __init__(
-        self, bunkr_status, download_info, progress_info, live_manager,
-        retries=5
-    ):
-        """
-        Initializes the Downloader instance with download and progress details.
-        """
-        self.bunkr_status = bunkr_status
-        self.download_link, self.download_path, self.file_name = download_info
-        self.task, self.progress_manager = progress_info
+    def __init__(self, session_info, download_info, live_manager, retries=5):
+        self.bunkr_status, self.download_path = session_info
+        self.download_link, self.file_name, self.task = download_info
         self.live_manager = live_manager
         self.retries = retries
 
@@ -109,7 +101,7 @@ class Downloader:
                 "Skipped download",
                 f"{self.file_name} has already been downloaded."
             )
-            self.progress_manager.update_task(
+            self.live_manager.update_task(
                 self.task, completed=100, visible=False
             )
             return True
@@ -129,7 +121,7 @@ class Downloader:
 
                 # Exit the loop if the download is successful
                 save_file_with_progress(
-                    response, final_path, self.task, self.progress_manager
+                    response, final_path, self.task, self.live_manager
                 )
                 return False
 
@@ -158,7 +150,7 @@ class Downloader:
             f"Failed to download {self.file_name}. "
             "The failure has been logged."
         )
-        self.progress_manager.update_task(self.task, visible=False)
+        self.live_manager.update_task(self.task, visible=False)
         return None
 
     def download(self):
@@ -172,7 +164,7 @@ class Downloader:
                 "Check the log file."
             )
             write_on_session_log(self.download_link)
-            self.progress_manager.update_task(self.task, visible=False)
+            self.live_manager.update_task(self.task, visible=False)
             return None
 
         final_path = os.path.join(self.download_path, self.file_name)
@@ -191,30 +183,29 @@ class Downloader:
 
 class AlbumDownloader:
     """
-    Manages the downloading of entire Bunkr albums.
+    Manages the downloading of entire Bunkr albums, including tracking progress
+    and handling failed downloads.
 
     Attributes:
-        bunkr_status (dict): Current status of Bunkr subdomains.
-        album_info (tuple): Contains the album ID and item pages.
-        download_path (str): Directory to save the album.
-        progress_manager (ProgressManager): Manages progress for the album.
+        bunkr_status (dict): Status of Bunkr subdomains.
+        download_path (str): Directory where the album will be saved.
+        album_id (str): ID of the album being downloaded.
+        item_pages (list): List of item pages in the album.
+        live_manager (LiveManager): Handles live display of progress and logs.
+        failed_downloads (list): List of downloads that failed during the
+                                 process.
     """
 
-    def __init__(
-        self, bunkr_status, album_info, download_path,
-        progress_manager, live_manager
-    ):
-        self.bunkr_status = bunkr_status
+    def __init__(self, session_info, album_info, live_manager):
+        self.bunkr_status, self.download_path = session_info
         self.album_id, self.item_pages = album_info
-        self.download_path = download_path
-        self.progress_manager = progress_manager
         self.live_manager = live_manager
         self.failed_downloads = []
 
     async def execute_item_download(self, item_page, current_task, semaphore):
         """Handles the download of an individual item in the album."""
         async with semaphore:
-            task = self.progress_manager.add_task(current_task=current_task)
+            task = self.live_manager.add_task(current_task=current_task)
 
             # Process the download of an item
             validated_item_page = validate_item_page(item_page)
@@ -225,14 +216,9 @@ class AlbumDownloader:
 
             # Download item
             if item_download_link:
-                downloader = Downloader(
-                    bunkr_status=self.bunkr_status,
-                    download_info=(
-                        item_download_link,
-                        self.download_path,
-                        item_file_name
-                    ),
-                    progress_info=(task, self.progress_manager),
+                downloader = MediaDownloader(
+                    session_info=(self.bunkr_status, self.download_path),
+                    download_info=(item_download_link, item_file_name, task),
                     live_manager=self.live_manager
                 )
 
@@ -242,10 +228,9 @@ class AlbumDownloader:
 
     async def retry_failed_download(self, task, file_name, download_link):
         """Handles failed downloads and retries them."""
-        downloader = Downloader(
-            bunkr_status=self.bunkr_status,
-            download_info=(download_link, self.download_path, file_name),
-            progress_info=(task, self.progress_manager),
+        downloader = MediaDownloader(
+            session_info=(self.bunkr_status, self.download_path),
+            download_info=(download_link, file_name, task),
             live_manager=self.live_manager,
             retries=1  # Retry once for failed downloads
         )
@@ -265,7 +250,7 @@ class AlbumDownloader:
     async def download_album(self, max_workers=5):
         """Main method to handle the album download."""
         num_items = len(self.item_pages)
-        self.progress_manager.add_overall_task(
+        self.live_manager.add_overall_task(
             description=self.album_id,
             num_tasks=num_items
         )
@@ -283,126 +268,8 @@ class AlbumDownloader:
         if self.failed_downloads:
             await self.process_failed_downloads()
 
-async def extract_with_playwright(url):
-    """
-    Initiates the download process for the specified URL using Playwright.
-
-    Args:
-        url (str): The URL of the media to download.
-
-    Returns:
-        str or None: The download link if successful, or None if an error
-                     occurs.
-    """
-    item_type = get_item_type(url)
-    media_type_mapping = {'v': 'video', 'i': 'picture'}
-
-    if item_type not in media_type_mapping:
-        print(
-            f"Unknown item type: {item_type}. "
-            f"Supported types are: {list(media_type_mapping.keys())}."
-        )
-        return None
-
-    media_type = media_type_mapping[item_type]
-    return await extract_media_download_link(url, media_type)
-
-def extract_item_pages(soup):
-    """
-    Extracts individual item page URLs from the parsed HTML content.
-
-    Args:
-        soup (BeautifulSoup): The BeautifulSoup object representing the parsed
-                              HTML content of the page.
-
-    Returns:
-        list: A list of URLs (strings) for individual item pages. If no item
-              pages are found or an error occurs, an empty list is returned.
-
-    Raises:
-        AttributeError: If there is an error accessing the required attributes
-                        of the HTML elements, such as missing or invalid tags.
-    """
-    try:
-        items = soup.find_all(
-            'a',
-            {
-                'class': "after:absolute after:z-10 after:inset-0",
-                'href': True
-            }
-        )
-        return [item['href'] for item in items]
-
-    except AttributeError as attr_err:
-        print(f"Error extracting item pages: {attr_err}")
-
-    return []
-
-def get_item_download_link(item_soup, item_type):
-    """
-    Retrieves the download link for a specific item (video or picture) from its
-    HTML content.
-
-    Args:
-        item_soup (BeautifulSoup): The BeautifulSoup object representing the
-                                   parsed HTML content of the item.
-        item_type (str): The type of the item.
-
-    Returns:
-        str: The download link (URL) for the item. Returns `None` if the link
-             cannot be found.
-
-    Raises:
-        AttributeError: If the required `src` attribute is not found for the
-                        specified `item_type`.
-        UnboundLocalError: If there is an issue with the assignment of
-                           `item_container` in the case of unknown `item_type`.
-    """
-    try:
-        if item_type in ('v', 'd'):
-            item_container = item_soup.find('source', {'src': True})
-        else:
-            item_container = item_soup.find(
-                'img',
-                {
-                    'class': "max-h-full w-auto object-cover relative z-20",
-                    'src': True
-                }
-            )
-        return item_container['src']
-
-    except (AttributeError, UnboundLocalError) as err:
-        print(f"Error extracting source: {err}")
-
-    return None
-
-async def get_download_info(item_soup, item_page):
-    """
-    Gathers download information (link and filename) for the item.
-
-    Args:
-        item_soup (BeautifulSoup): Parsed HTML content of the item.
-        item_page (str): The item page URL.
-
-    Returns:
-        tuple: A tuple containing the download link and file name.
-    """
-    validated_item_page = validate_item_page(item_page)
-    if item_soup is None:
-        return await extract_with_playwright(validated_item_page)
-
-    item_type = get_item_type(validated_item_page)
-    item_download_link = get_item_download_link(item_soup, item_type)
-
-    item_file_name = (
-        item_download_link.split('/')[-1] if item_download_link
-        else None
-    )
-
-    return item_download_link, item_file_name
-
 async def handle_download_process(
-    bunkr_status, page_info, download_path, progress_manager, live_manager
+    bunkr_status, page_info, download_path, live_manager
 ):
     """
     Handles the download process for a Bunkr album or single item.
@@ -413,7 +280,6 @@ async def handle_download_process(
             - url (str): The URL of the item or album to download.
             - soup (BeautifulSoup): The parsed HTML content of the page.
         download_path (str): Path to save the downloaded files.
-        progress_manager (ProgressManager): Manager for tracking progress.
         live_manager (LiveManager): The live display manager that handles
                                     updating the live view of the download
                                     process.
@@ -424,30 +290,25 @@ async def handle_download_process(
     if check_url_type(url):
         item_pages = extract_item_pages(soup)
         album_downloader = AlbumDownloader(
-            bunkr_status=bunkr_status,
+            session_info=(bunkr_status, download_path),
             album_info=(identifier, item_pages),
-            download_path=download_path,
-            progress_manager=progress_manager,
             live_manager=live_manager
         )
         await album_downloader.download_album()
 
     else:
         (download_link, file_name) = await get_download_info(soup, url)
-        progress_manager.add_overall_task(identifier, num_tasks=1)
-        task = progress_manager.add_task()
+        live_manager.add_overall_task(identifier, num_items=1)
+        task = live_manager.add_task()
 
-        downloader = Downloader(
-            bunkr_status=bunkr_status,
-            download_info=(download_link, download_path, file_name),
-            progress_info=(task, progress_manager),
-            live_manager=live_manager
+        downloader = MediaDownloader(
+            session_info=(bunkr_status, download_path),
+            download_info=(download_link, file_name, task),
+            live_manager=live_manager,
         )
         downloader.download()
 
-async def validate_and_download(
-    bunkr_status, url, progress_manager, live_manager
-):
+async def validate_and_download(bunkr_status, url, live_manager):
     """
     Validates the provided URL, fetches the associated page, and initiates
     the download process for the album or item.
@@ -458,7 +319,6 @@ async def validate_and_download(
                              availability of necessary resources.
         url (str): The URL of the album or item to download. This URL will 
                    be validated and used to fetch the associated page content.
-        progress_manager (ProgressManager): Manager for tracking progress.
         live_manager (LiveManager): The live display manager that handles
                                     updating the live view of the download
                                     process.
@@ -476,19 +336,29 @@ async def validate_and_download(
         get_album_id(validated_url) if check_url_type(validated_url)
         else None
     )
+    download_path = create_download_directory(album_id)
 
     try:
-        download_path = create_download_directory(album_id)
         await handle_download_process(
             bunkr_status,
             (validated_url, soup),
             download_path,
-            progress_manager,
             live_manager
         )
 
     except (RequestConnectionError, Timeout, RequestException) as err:
         print(f"Error downloading the from {validated_url}: {err}")
+
+def initialize_managers():
+    """
+    Initializes and returns the managers for progress tracking and logging.
+
+    Returns:
+        LiveManager: Handles the live display of progress and logs.
+    """
+    progress_manager = ProgressManager(item_description="File")
+    logger_table = LoggerTable()
+    return LiveManager(progress_manager, logger_table)
 
 async def main():
     """
@@ -501,19 +371,12 @@ async def main():
 
     clear_terminal()
     bunkr_status = get_bunkr_status()
+    live_manager = initialize_managers()
     url = sys.argv[1]
-
-    progress_manager = ProgressManager(item_description="File")
-    progress_table = progress_manager.create_progress_table()
-
-    logger_table = LoggerTable()
-    live_manager = LiveManager(progress_table, logger_table)
 
     try:
         with live_manager.live:
-            await validate_and_download(
-                bunkr_status, url, progress_manager, live_manager
-            )
+            await validate_and_download(bunkr_status, url, live_manager)
 
     except KeyboardInterrupt:
         sys.exit(1)
