@@ -2,7 +2,7 @@
 
 > A Python-based Bunkr downloader that uses Playwright for browser automation to fetch images and videos from specified URLs, only falling back to Playwright if the main download logic fails. It supports downloading from both Bunkr albums and individual file URLs, while logging any issues. The code also supports multiple concurrent downloads for improved efficiency.
 
-![Screenshot](https://github.com/Lysagxra/SimpleBunkrDownloader/blob/b334cf27fff8ca734b942e32186338592405a45f/misc/Demo.gif)
+![Screenshot](https://github.com/Lysagxra/BunkrDownloader/blob/3bc786d91f2950fbc1df120b7ebbb6ff90e4e6fd/misc/DemoV2.gif)
 
 ## Features
 
