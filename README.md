@@ -93,7 +93,7 @@ To batch download from multiple URLs, you can use the `main.py` script. This scr
 
 1. Create a file named `URLs.txt` in the root of your project, listing each URL on a new line.
 
-Example of `URLs.txt`
+- Example of `URLs.txt`:
 
 ```
 https://bunkr.si/a/PUK068QE
