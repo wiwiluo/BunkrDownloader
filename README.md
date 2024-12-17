@@ -101,6 +101,9 @@ https://bunkr.fi/v/gBrv5f8tAGlGW
 https://bunkr.fi/a/kVYLh49Q
 ```
 
+- Ensure that each URL is on its own line without any extra spaces.
+- You can add as many URLs as you need, following the same format.
+
 2. Run the batch download script:
 
 ```
