@@ -9,8 +9,6 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
 
-TITLE_COLOR = "light_cyan3"
-
 class ProgressManager:
     """
     Manages progress bars for multiple tasks with an overall progress bar.
@@ -24,7 +22,8 @@ class ProgressManager:
         num_tasks (int): Total number of tasks to be tracked.
     """
 
-    def __init__(self, item_description, color=TITLE_COLOR):
+    def __init__(self, task_name, item_description, color="light_cyan3"):
+        self.task_name = task_name
         self.item_description = item_description
         self.color = color
         self.overall_progress = self.create_progress_bar()
@@ -105,14 +104,14 @@ class ProgressManager:
         progress_table.add_row(
             Panel.fit(
                 self.overall_progress,
-                title=f"[bold {TITLE_COLOR}]Overall Progress",
+                title=f"[bold {self.color}]Overall Progress",
                 border_style="bright_blue",
                 padding=(1, 1),
                 width=40
             ),
             Panel.fit(
                 self.task_progress,
-                title=f"[bold {TITLE_COLOR}]Album Progress",
+                title=f"[bold {self.color}]{self.task_name} Progress",
                 border_style="medium_purple",
                 padding=(1, 1),
                 width=40
