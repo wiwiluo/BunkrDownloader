@@ -32,7 +32,7 @@ class ProgressManager:
         self.num_tasks = 0
 
     @staticmethod
-    def adjust_description(description: str, max_length: int = 8) -> str:
+    def adjust_description(description, max_length=8):
         """
         Truncates a string to a specified maximum length, adding an ellipsis if
         truncated.
