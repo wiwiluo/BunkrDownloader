@@ -356,7 +356,10 @@ def initialize_managers():
     Returns:
         LiveManager: Handles the live display of progress and logs.
     """
-    progress_manager = ProgressManager(item_description="File")
+    progress_manager = ProgressManager(
+        task_name="Album",
+        item_description="File"
+    )
     logger_table = LoggerTable()
     return LiveManager(progress_manager, logger_table)
 
