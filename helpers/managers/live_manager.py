@@ -28,22 +28,8 @@ class LiveManager:
         self.progress_table = self.progress_manager.create_progress_table()
         self.logger = logger
         self.live = Live(
-            self.render_live_view(),
+            self._render_live_view(),
             refresh_per_second=refresh_per_second
-        )
-
-    def render_live_view(self):
-        """
-        Renders the combined live view of the progress table and the logger
-        table.
-
-        Returns:
-            Group: A Group containing both the progress table and the log
-                   panel.
-        """
-        return Group(
-            self.progress_table,
-            self.logger.render_log_panel()
         )
 
     def add_overall_task(self, description, num_tasks):
@@ -60,15 +46,9 @@ class LiveManager:
         self.progress_manager.update_task(task_id, completed, advance, visible)
 
     def update_log(self, event, details):
-        """
-        Logs an event and refreshes the live display.
-
-        Args:
-            event (str): The type of event.
-            details (str): The event details.
-        """
+        """Logs an event and refreshes the live display."""
         self.logger.log(event, details)
-        self.live.update(self.render_live_view())
+        self.live.update(self._render_live_view())
 
     def start(self):
         """Start the live display."""
@@ -77,3 +57,14 @@ class LiveManager:
     def stop(self):
         """Stop the live display."""
         self.live.stop()
+
+    # Private methods
+    def _render_live_view(self):
+        """
+        Renders the combined live view of the progress table and the logger
+        table.
+        """
+        return Group(
+            self.progress_table,
+            self.logger.render_log_panel()
+        )
