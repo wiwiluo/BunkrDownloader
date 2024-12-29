@@ -21,9 +21,11 @@ from requests.exceptions import (
 )
 
 from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
+
 from helpers.managers.live_manager import LiveManager
 from helpers.managers.log_manager import LoggerTable
 from helpers.managers.progress_manager import ProgressManager
+
 from helpers.download_utils import save_file_with_progress
 from helpers.file_utils import write_on_session_log
 from helpers.bunkr_utils import (
@@ -135,7 +137,7 @@ class MediaDownloader:
         """Handle a failed download after all retry attempts."""
         if not retry_failed:
             self.live_manager.update_log(
-                "Download marked as failed",
+                "Exceeded retry attempts",
                 f"Exceeded retry attempts for {self.file_name}. "
                 "It will be retried one more time after all other tasks."
             )
@@ -357,7 +359,7 @@ def initialize_managers():
         LiveManager: Handles the live display of progress and logs.
     """
     progress_manager = ProgressManager(
-        task_name="Album",
+        task_name = "Album",
         item_description="File"
     )
     logger_table = LoggerTable()
