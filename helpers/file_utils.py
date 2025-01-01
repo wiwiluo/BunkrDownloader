@@ -4,7 +4,7 @@ includes methods to read the contents of a file and to write content to a file,
 with optional support for clearing the file.
 """
 
-SESSION_LOG = "session_log.txt"
+from .config import SESSION_LOG
 
 def read_file(filename):
     """

@@ -8,14 +8,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
-STATUS_PAGE = "https://status.bunkr.ru/"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
-        "Gecko/20100101 Firefox/117.0"
-    )
-}
+from .config import STATUS_PAGE, HEADERS
 
 def fetch_page(url):
     """

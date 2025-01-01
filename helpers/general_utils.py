@@ -15,8 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from .file_utils import write_on_session_log
-
-DOWNLOAD_FOLDER = "Downloads"
+from .config import DOWNLOAD_FOLDER
 
 async def fetch_page(url, retries=5):
     """
