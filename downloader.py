@@ -37,15 +37,7 @@ from helpers.general_utils import (
 from helpers.url_utils import (
     check_url_type, get_identifier, get_album_id, validate_item_page
 )
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
-        "Gecko/20100101 Firefox/117.0"
-    ),
-    "Connection": "keep-alive",
-    "Referer": "https://get.bunkrr.su/"
-}
+from helpers.config import DOWNLOAD_HEADERS as HEADERS
 
 class MediaDownloader:
     """
