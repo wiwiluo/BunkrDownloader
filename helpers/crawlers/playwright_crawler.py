@@ -15,41 +15,29 @@ from playwright.async_api import (
 )
 
 from helpers.file_utils import write_on_session_log
+from helpers.config import BROWSER_CONFIG as CONFIG
 
-SESSION_LOG = 'session_log.txt'
-TIMEOUT = 5000
-
-CONFIG = {
-    'url': "https://9xbuddy.in/en",
-    'input_selector': "input.w-full",
-    'button_selector': r".w-8\/12",
-    'download_button': (
-        r"div.lg\:flex:nth-child(6) > div:nth-child(2) > a:nth-child(1)"
-    ),
-    'attribute': "href"
-}
-
-async def wait_and_extract_download_link(
-        page, download_button_selector, attribute
-):
+async def wait_and_extract_download_link(page):
     """
     Waits for a download link to become available on the page, then extracts
     and returns its attribute.
 
     Args:
         page: The Playwright page object.
-        download_button_selector (str): The CSS selector for the download
-                                        button.
-        attribute (str): The attribute to retrieve from the
-                         element (e.g., 'src', 'href').
 
     Returns:
         str or None: The value of the specified attribute, or None if the
                      element is not found.
     """
-    await page.wait_for_selector(download_button_selector, timeout=TIMEOUT)
-    element = await page.query_selector(download_button_selector)
-    return await element.get_attribute(attribute) if element else None
+    await page.wait_for_selector(
+        CONFIG['download_button'],
+        timeout=CONFIG["button_timeout"]
+    )
+    element = await page.query_selector(CONFIG['download_button'])
+    return (
+        await element.get_attribute(CONFIG["attribute"]) if element
+        else None
+    )
 
 async def run(playwright, url):
     """
@@ -71,14 +59,13 @@ async def run(playwright, url):
     try:
         await page.goto(CONFIG['url'])
         await page.fill(CONFIG['input_selector'], url)
-        await page.wait_for_selector(CONFIG['button_selector'], timeout=TIMEOUT)
+        await page.wait_for_selector(
+            CONFIG['button_selector'],
+            timeout=CONFIG["button_timeout"]
+        )
         await page.click(CONFIG['button_selector'])
 
-        download_link = await wait_and_extract_download_link(
-            page,
-            CONFIG['download_button'],
-            CONFIG['attribute']
-        )
+        download_link = await wait_and_extract_download_link(page)
         return download_link
 
     except PlaywrightTimeoutError:
