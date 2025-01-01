@@ -15,10 +15,9 @@ import asyncio
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.file_utils import read_file, write_file
 from helpers.general_utils import clear_terminal
-from downloader import validate_and_download, initialize_managers
+from helpers.config import FILE, SESSION_LOG
 
-FILE = "URLs.txt"
-SESSION_LOG = "session_log.txt"
+from downloader import validate_and_download, initialize_managers
 
 async def process_urls(urls):
     """
