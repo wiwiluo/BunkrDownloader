@@ -34,6 +34,7 @@ async def process_urls(urls):
         with live_manager.live:
             for url in urls:
                 await validate_and_download(bunkr_status, url, live_manager)
+            live_manager.stop()
 
     except KeyboardInterrupt:
         sys.exit(1)
