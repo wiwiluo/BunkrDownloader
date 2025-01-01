@@ -5,6 +5,9 @@ real-time display, allowing dynamic updates of both tables. The `LiveManager`
 class handles the integration and refresh of the live view.
 """
 
+import time
+import datetime
+
 from rich.live import Live
 from rich.console import Group
 
@@ -32,6 +35,9 @@ class LiveManager:
             refresh_per_second=refresh_per_second
         )
 
+        self.start_time = time.time()
+        self.update_log("Script started", "The script has started execution.")
+
     def add_overall_task(self, description, num_tasks):
         """Call ProgressManager to add an overall task."""
         self.progress_manager.add_overall_task(description, num_tasks)
@@ -55,7 +61,15 @@ class LiveManager:
         self.live.start()
 
     def stop(self):
-        """Stop the live display."""
+        """Stop the live display and log the execution time."""
+        execution_time = self._compute_execution_time()
+
+        # Log the execution time in hh:mm:ss format
+        self.update_log(
+            "Script ended",
+            f"The script has finished execution. "
+            f"Execution time: {execution_time}"
+        )
         self.live.stop()
 
     # Private methods
@@ -68,3 +82,15 @@ class LiveManager:
             self.progress_table,
             self.logger.render_log_panel()
         )
+
+    def _compute_execution_time(self):
+        """Compute and format the execution time of the script."""
+        execution_time = time.time() - self.start_time
+        time_delta = datetime.timedelta(seconds=execution_time)
+
+        # Extract hours, minutes, and seconds from the timedelta object
+        hours = time_delta.seconds // 3600
+        minutes = (time_delta.seconds % 3600) // 60
+        seconds = time_delta.seconds % 60
+
+        return f"{hours:02} hrs {minutes:02} mins {seconds:02} secs"
