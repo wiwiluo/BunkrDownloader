@@ -20,24 +20,36 @@ from requests.exceptions import (
     Timeout, RequestException
 )
 
-from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
+from helpers.crawlers.crawler_utils import (
+    extract_item_pages,
+    get_download_info
+)
 
 from helpers.managers.live_manager import LiveManager
 from helpers.managers.log_manager import LoggerTable
 from helpers.managers.progress_manager import ProgressManager
 
+from helpers.config import DOWNLOAD_HEADERS as HEADERS
 from helpers.download_utils import save_file_with_progress
 from helpers.file_utils import write_on_session_log
 from helpers.bunkr_utils import (
-    get_bunkr_status, subdomain_is_offline, mark_subdomain_as_offline
+    get_bunkr_status,
+    subdomain_is_offline,
+    mark_subdomain_as_offline
 )
 from helpers.general_utils import (
-    fetch_page, create_download_directory, clear_terminal
+    fetch_page,
+    create_download_directory,
+    clear_terminal,
+    format_directory_name
 )
 from helpers.url_utils import (
-    check_url_type, get_identifier, get_album_id, validate_item_page
+    check_url_type,
+    get_identifier,
+    get_album_name,
+    get_album_id,
+    validate_item_page
 )
-from helpers.config import DOWNLOAD_HEADERS as HEADERS
 
 class MediaDownloader:
     """
@@ -326,11 +338,15 @@ async def validate_and_download(bunkr_status, url, live_manager):
     """
     validated_url = validate_item_page(url)
     soup = await fetch_page(validated_url)
+
     album_id = (
         get_album_id(validated_url) if check_url_type(validated_url)
         else None
     )
-    download_path = create_download_directory(album_id)
+    album_name = get_album_name(soup)
+
+    directory_name = format_directory_name(album_name, album_id)
+    download_path = create_download_directory(directory_name)
 
     try:
         await handle_download_process(
