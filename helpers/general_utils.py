@@ -76,6 +76,30 @@ async def fetch_page(url, retries=5):
 
     return None
 
+def format_directory_name(directory_name, directory_id):
+    """
+    Formats a directory name by appending its ID in parentheses if the ID is
+    provided. If the directory ID is `None`, only the directory name is
+    returned.
+
+    Args:
+        directory_name (str): The name of the directory to format.
+        directory_id (int or None): The ID of the directory. If `None`, the
+                                    function returns `None`.
+
+    Returns:
+        str or None: A formatted string with the directory name followed by
+                     the ID in parentheses, or `None` if the `directory_id` is
+                     `None`.
+    """
+    if directory_name is None:
+        return directory_id
+
+    return  (
+        f"{directory_name} ({directory_id})" if directory_id is not None
+        else None
+    )
+
 def create_download_directory(directory_name):
     """
     Creates a directory for downloads if it doesn't exist.
