@@ -80,6 +80,35 @@ def get_album_id(url):
     except IndexError as indx_err:
         raise ValueError("Invalid URL format.") from indx_err
 
+def get_album_name(soup):
+    """
+    Extracts the album name from a BeautifulSoup object representing the HTML
+    of a page. If the album name cannot be found, a message is printed, and
+    `None` is returned.
+
+    Args:
+        soup (BeautifulSoup): A BeautifulSoup object containing the HTML of the
+                              page.
+
+    Returns:
+        str or None: The extracted album name as a string, with any leading/
+                     trailing whitespace removed. If the album name is not
+                     found, returns `None`.
+    """
+    name_container = soup.find(
+        'div',
+        {'class': "text-subs font-semibold flex text-base sm:text-lg"}
+    )
+
+    if name_container:
+        return name_container.find('h1').get_text(strip=True)
+
+#    print(
+#        "Album name container not found; "
+#        "only the Album ID will be used for the directory name."
+#    )
+    return None
+
 def get_item_type(item_page):
     """
     Extracts the type of item (album or single file) from the item page URL.
