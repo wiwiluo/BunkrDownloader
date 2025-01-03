@@ -40,6 +40,7 @@ async def fetch_page(url, retries=5):
     """
     error_messages = {
         500: f"Internal server error when fetching {url}",
+        502: f"Bad gateway for {url}, probably offline",
         403: f"DDoSGuard blocked the request to {url}"
     }
 
