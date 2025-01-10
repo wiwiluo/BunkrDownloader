@@ -6,6 +6,21 @@ albums or videos.
 """
 
 import sys
+from urllib.parse import urlparse
+
+def get_host_page(url):
+    """
+    Extracts the base host URL from a given URL.
+
+    Args:
+        url (str): The full URL from which the host page should be extracted.
+
+    Returns:
+        str: The base URL, which consists of 'https://' followed by the network
+             location (domain) of the provided URL.
+    """
+    url_netloc = urlparse(url).netloc
+    return f"https://{url_netloc}"
 
 def check_url_type(url):
     """
@@ -17,20 +32,21 @@ def check_url_type(url):
 
     Returns:
         bool: True if the URL is for an album, False if it is for a single
-              video file.
+              file.
 
     Raises:
         SystemExit: If the URL is invalid.
         ValueError: If the URL format is incorrect.
     """
+    url_mapping = {'a': True, 'f': False, 'v': False}
+
     try:
         url_segment = url.split('/')[-2]
-        url_mapping = {'a': True, 'v': False}
 
         if url_segment in url_mapping:
             return url_mapping[url_segment]
 
-        print('Enter a valid video or album URL.')
+        print("Enter a valid album or file URL.")
         sys.exit(1)
 
     except IndexError as indx_err:
@@ -142,7 +158,24 @@ def validate_item_page(item_page):
     """
     item_type = get_item_type(item_page)
 
-    if item_type == 'd':
-        return item_page.replace('/d/', '/v/')
+    if item_type in ('d', 'f'):
+        return item_page.replace(f"/{item_type}/", "/v/")
 
     return item_page
+
+def get_item_filename(item_download_link):
+    """
+    Extracts the filename from a download link URL by removing any directory
+    structure.
+
+    Args:
+        item_download_link (str): The URL of the download link that contains
+                                  the filename in its path.
+
+    Returns:
+        str: The cleaned filename extracted from the URL, without any directory
+             structure.
+    """
+    parsed_url = urlparse(item_download_link)
+    # The download link path contains the filename, preceded by a '/'
+    return parsed_url.path.replace('/', '')
