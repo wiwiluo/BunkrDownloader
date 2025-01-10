@@ -135,7 +135,7 @@ def get_item_type(item_page):
         item_page (str): The item page URL.
 
     Returns:
-        str: The type of item ('v' or 'd').
+        str: The type of item ('v', 'd', or 'f').
 
     Raises:
         AttributeError: If there is an error extracting the item type.
@@ -147,23 +147,6 @@ def get_item_type(item_page):
         print(f"Error extracting the item type: {attr_err}")
 
     return None
-
-def validate_item_page(item_page):
-    """
-    Validates and adjusts the item page URL if necessary.
-
-    Args:
-        item_page (str): The item page URL.
-
-    Returns:
-        str: The validated item page URL.
-    """
-    item_type = get_item_type(item_page)
-
-    if item_type in ('d', 'f'):
-        return item_page.replace(f"/{item_type}/", "/v/")
-
-    return item_page
 
 def get_item_filename(item_download_link):
     """
