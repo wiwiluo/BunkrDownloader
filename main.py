@@ -41,16 +41,16 @@ async def process_urls(urls):
 async def main():
     """
     Main function to execute the script.
-
-    Clears the session log, reads URLs from a file, processes them,
-    and clears the URLs file at the end.
     """
+    # Clear the terminal and session log file
     clear_terminal()
     write_file(SESSION_LOG)
 
+    # Read and process URLs
     urls = read_file(FILE)
     await process_urls(urls)
 
+    # Clear URLs file
     write_file(FILE)
 
 if __name__ == '__main__':
