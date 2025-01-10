@@ -1,6 +1,6 @@
 # Bunkr Downloader
 
-> A Python Bunkr downloader using Playwright for browser automation to fetch images and videos from URLs, falling back to Playwright only if the main download fails. It supports both Bunkr albums and individual file URLs, logs issues, and enables concurrent downloads for efficiency.
+> A Python Bunkr downloader that fetches images and videos from URLs. It supports both Bunkr albums and individual file URLs, logs issues, and enables concurrent downloads for efficiency.
 
 ![Screenshot](https://github.com/Lysagxra/BunkrDownloader/blob/3bc786d91f2950fbc1df120b7ebbb6ff90e4e6fd/misc/DemoV2.gif)
 
@@ -15,7 +15,6 @@
 ## Dependencies
 
 - Python 3
-- `playwright` - for browser automation and downloading content.
 - `BeautifulSoup` (bs4) - for HTML parsing
 - `requests` - for HTTP requests
 - `rich` - for progress display in the terminal.
@@ -26,21 +25,21 @@
 project-root/
 ├── helpers/
 │ ├── crawlers/
-│ │ ├── crawler_utils.py       # Utilities for extracting media download links from item pages
-│ │ └── playwright_crawler.py  # Module that utilizes Playwright to automate downloads from Bunkr
+│ │ └── crawler_utils.py     # Utilities for extracting media download links
 │ ├── managers/
-│ │ ├── live_manager.py        # Manages a real-time live display
-│ │ ├── log_manager.py         # Manages real-time log updates
-│ │ └── progress_manager.py    # Manages progress bars
-│ ├── bunkr_utils.py           # Utilities for checking Bunkr status and URL validation
-│ ├── download_utils.py        # Utilities for managing the download process
-│ ├── file_utils.py            # Utilities for managing file operations
-│ ├── general_utils.py         # Miscellaneous utility functions
-│ └── url_utils.py             # Utilities for Bunkr URLs
-├── downloader.py              # Module for initiating downloads from specified Bunkr URLs
-├── main.py                    # Main script to run the downloader
-├── URLs.txt                   # Text file listing album URLs to be downloaded
-└── session_log.txt            # Log file for recording session details
+│ │ ├── live_manager.py      # Manages a real-time live display
+│ │ ├── log_manager.py       # Manages real-time log updates
+│ │ └── progress_manager.py  # Manages progress bars
+│ ├── bunkr_utils.py         # Utilities for checking Bunkr status
+│ ├── config.py              # Manages constants and settings used across the project
+│ ├── download_utils.py      # Utilities for managing the download process
+│ ├── file_utils.py          # Utilities for managing file operations
+│ ├── general_utils.py       # Miscellaneous utility functions
+│ └── url_utils.py           # Utilities for Bunkr URLs
+├── downloader.py            # Module for initiating downloads from specified Bunkr URLs
+├── main.py                  # Main script to run the downloader
+├── URLs.txt                 # Text file listing album URLs to be downloaded
+└── session_log.txt          # Log file for recording session details
 ```
 
 ## Installation
@@ -97,7 +96,7 @@ To batch download from multiple URLs, you can use the `main.py` script. This scr
 
 ```
 https://bunkr.si/a/PUK068QE
-https://bunkr.fi/v/gBrv5f8tAGlGW
+https://bunkr.fi/f/gBrv5f8tAGlGW
 https://bunkr.fi/a/kVYLh49Q
 ```
 
