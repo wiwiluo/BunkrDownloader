@@ -7,7 +7,13 @@ utilizes both Playwright for dynamic content extraction and BeautifulSoup for
 static content scraping.
 """
 
-from helpers.url_utils import validate_item_page, get_item_type
+from helpers.general_utils import fetch_page
+from helpers.url_utils import (
+    get_item_type,
+    get_item_filename,
+    validate_item_page
+)
+
 from .playwright_crawler import extract_media_download_link
 
 async def extract_with_playwright(url):
@@ -34,7 +40,7 @@ async def extract_with_playwright(url):
     media_type = media_type_mapping[item_type]
     return await extract_media_download_link(url, media_type)
 
-def extract_item_pages(soup):
+def extract_item_pages(soup, host_page):
     """
     Extracts individual item page URLs from the parsed HTML content.
 
@@ -58,22 +64,101 @@ def extract_item_pages(soup):
                 'href': True
             }
         )
-        return [item['href'] for item in items]
+
+        if not items:
+            print("No item pages found in the HTML content.")
+
+        return [f"{host_page}{item.get('href')}" for item in items]
 
     except AttributeError as attr_err:
         print(f"Error extracting item pages: {attr_err}")
 
     return []
 
-def get_item_download_link(item_soup, item_type):
+def get_item_container(item_soup):
     """
-    Retrieves the download link for a specific item (video or picture) from its
-    HTML content.
+    Extracts the first available image or source container from the provided
+    BeautifulSoup object.
+
+    Args:
+        item_soup (BeautifulSoup): A BeautifulSoup object representing the HTML
+                                   structure of the item.
+
+    Returns:
+        BeautifulSoup element or None: The first found <source> or <img>
+        element with a 'src' attribute, or None if neither is found.
+    """
+    # Try to find the <source> element
+    item_container = item_soup.find('source', {'src': True})
+
+    # If no <source> element is found, try to find an <img> element
+    if item_container is None:
+        item_container = item_soup.find(
+            'img', 
+            {
+                'class': "max-h-full w-auto object-cover relative z-20",
+                'src': True
+            }
+        )
+
+    return item_container
+
+async def get_non_media_download_link(item_soup):
+    """
+    Extracts the download link for a non-media item from a provided
+    BeautifulSoup object.
+
+    Args:
+        item_soup (BeautifulSoup): A BeautifulSoup object representing the HTML
+                                   structure of the item page containing the
+                                   first download link.
+
+    Returns:
+        str: The download link (URL) of the non-media item extracted from the
+             second page.
+    
+    Raises:
+        AttributeError: If the necessary download link or buttons are not found
+                        on the pages.
+        Exception: If there is any issue during fetching or parsing the pages.
+    """
+    # Find the first download button in the initial page
+    non_media_container = item_soup.find(
+        'a',
+        {
+            'class': (
+                "btn btn-main btn-lg rounded-full px-6 font-semibold flex-1 "
+                "ic-download-01 ic-before before:text-lg"
+            ),
+            'href': True
+        }
+    )
+
+    # Fetch the page linked from the first download button
+    non_media_item_soup = await fetch_page(non_media_container['href'])
+
+    # Find the second download button in the fetched page
+    non_media_item_download_container = non_media_item_soup.find(
+        'a',
+        {
+            'class': (
+                "btn btn-main btn-lg rounded-full px-6 font-semibold "
+                "ic-download-01 ic-before before:text-lg"
+            ),
+            'href': True
+        }
+    )
+
+    # Return the download link extraced from the 'href' attribute
+    return non_media_item_download_container['href']
+
+async def get_item_download_link(item_soup):
+    """
+    Retrieves the download link for a specific item from its HTML content.
 
     Args:
         item_soup (BeautifulSoup): The BeautifulSoup object representing the
                                    parsed HTML content of the item.
-        item_type (str): The type of the item.
 
     Returns:
         str: The download link (URL) for the item. Returns `None` if the link
@@ -82,23 +167,16 @@ def get_item_download_link(item_soup, item_type):
     Raises:
         AttributeError: If the required `src` attribute is not found for the
                         specified `item_type`.
-        UnboundLocalError: If there is an issue with the assignment of
-                           `item_container` in the case of unknown `item_type`.
     """
+    item_container = get_item_container(item_soup)
+
+    if item_container is None:
+        return await get_non_media_download_link(item_soup)
+
     try:
-        if item_type in ('v', 'd'):
-            item_container = item_soup.find('source', {'src': True})
-        else:
-            item_container = item_soup.find(
-                'img',
-                {
-                    'class': "max-h-full w-auto object-cover relative z-20",
-                    'src': True
-                }
-            )
         return item_container['src']
 
-    except (AttributeError, UnboundLocalError) as err:
+    except AttributeError as err:
         print(f"Error extracting source: {err}")
 
     return None
@@ -118,11 +196,11 @@ async def get_download_info(item_soup, item_page):
     if item_soup is None:
         return await extract_with_playwright(validated_item_page)
 
-    item_type = get_item_type(validated_item_page)
-    item_download_link = get_item_download_link(item_soup, item_type)
+#    item_type = get_item_type(validated_item_page)
+    item_download_link = await get_item_download_link(item_soup)
 
     item_file_name = (
-        item_download_link.split('/')[-1] if item_download_link
+        get_item_filename(item_download_link) if item_download_link
         else None
     )
 
