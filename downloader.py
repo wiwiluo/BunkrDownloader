@@ -1,6 +1,7 @@
 """
 Python-based downloader for Bunkr albums and files. Leverages Playwright for
-browser automation, supporting single-file and album downloads with error logging.
+browser automation, supporting single-file and album downloads with error
+logging.
 
 Usage:
     Run the script from the command line with a valid album or media URL:
@@ -49,7 +50,6 @@ from helpers.url_utils import (
     get_album_name,
     get_album_id,
     get_host_page,
-    validate_item_page
 )
 
 class MediaDownloader:
@@ -215,11 +215,11 @@ class AlbumDownloader:
             task = self.live_manager.add_task(current_task=current_task)
 
             # Process the download of an item
-            validated_item_page = validate_item_page(item_page)
-            item_soup = await fetch_page(validated_item_page)
-            (item_download_link, item_file_name) = await get_download_info(
-                item_soup, validated_item_page
-            )
+            item_soup = await fetch_page(item_page)
+            (
+                item_download_link,
+                item_file_name
+            ) = await get_download_info(item_soup)
 
             # Download item
             if item_download_link:
@@ -305,7 +305,7 @@ async def handle_download_process(
         await album_downloader.download_album()
 
     else:
-        (download_link, file_name) = await get_download_info(soup, url)
+        download_link, file_name = await get_download_info(soup)
         live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
@@ -323,10 +323,8 @@ async def validate_and_download(bunkr_status, url, live_manager):
 
     Args:
         bunkr_status (dict): A dictionary representing the current status
-                             of Bunkr subdomains, used for checking the
-                             availability of necessary resources.
-        url (str): The URL of the album or item to download. This URL will 
-                   be validated and used to fetch the associated page content.
+                             of Bunkr subdomains.
+        url (str): The URL of the album or item to download.
         live_manager (LiveManager): The live display manager that handles
                                     updating the live view of the download
                                     process.
@@ -338,11 +336,10 @@ async def validate_and_download(bunkr_status, url, live_manager):
         RequestException: If there is any other exception related to the
                           request.
     """
-    validated_url = validate_item_page(url)
-    soup = await fetch_page(validated_url)
+    soup = await fetch_page(url)
 
     album_id = (
-        get_album_id(validated_url) if check_url_type(validated_url)
+        get_album_id(url) if check_url_type(url)
         else None
     )
     album_name = get_album_name(soup)
@@ -353,13 +350,13 @@ async def validate_and_download(bunkr_status, url, live_manager):
     try:
         await handle_download_process(
             bunkr_status,
-            (validated_url, soup),
+            (url, soup),
             download_path,
             live_manager
         )
 
     except (RequestConnectionError, Timeout, RequestException) as err:
-        print(f"Error downloading the from {validated_url}: {err}")
+        print(f"Error downloading from {url}: {err}")
 
 def initialize_managers():
     """
