@@ -20,14 +20,14 @@ from requests.exceptions import (
     Timeout, RequestException
 )
 
+from helpers.managers.live_manager import LiveManager
+from helpers.managers.log_manager import LoggerTable
+from helpers.managers.progress_manager import ProgressManager
+
 from helpers.crawlers.crawler_utils import (
     extract_item_pages,
     get_download_info
 )
-
-from helpers.managers.live_manager import LiveManager
-from helpers.managers.log_manager import LoggerTable
-from helpers.managers.progress_manager import ProgressManager
 
 from helpers.config import DOWNLOAD_HEADERS as HEADERS
 from helpers.download_utils import save_file_with_progress
@@ -48,6 +48,7 @@ from helpers.url_utils import (
     get_identifier,
     get_album_name,
     get_album_id,
+    get_host_page,
     validate_item_page
 )
 
@@ -291,10 +292,11 @@ async def handle_download_process(
                                     process.
     """
     (url, soup) = page_info
+    host_page = get_host_page(url)
     identifier = get_identifier(url)
 
     if check_url_type(url):
-        item_pages = extract_item_pages(soup)
+        item_pages = extract_item_pages(soup, host_page)
         album_downloader = AlbumDownloader(
             session_info=(bunkr_status, download_path),
             album_info=(identifier, item_pages),
