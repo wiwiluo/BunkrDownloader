@@ -6,6 +6,7 @@ albums or videos.
 """
 
 import sys
+import html
 from urllib.parse import urlparse
 
 def get_host_page(url):
@@ -117,7 +118,8 @@ def get_album_name(soup):
     )
 
     if name_container:
-        return name_container.find('h1').get_text(strip=True)
+        album_name = name_container.find('h1').get_text(strip=True)
+        return html.unescape(album_name)
 
 #    print(
 #        "Album name container not found; "
