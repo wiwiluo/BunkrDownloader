@@ -1,11 +1,12 @@
 """
 This module provides utilities for fetching web pages, managing directories, 
 and clearing the terminal screen. It includes functions to handle common tasks 
-such as sending HTTP requests, parsing HTML, creating download directories, and 
+such as sending HTTP requests, parsing HTML, creating download directories, and
 clearing the terminal, making it reusable across projects.
 """
 
 import os
+import re
 import sys
 import random
 import asyncio
@@ -101,6 +102,25 @@ def format_directory_name(directory_name, directory_id):
         else None
     )
 
+def sanitize_directory_name(directory_name):
+    """
+    Sanitize a given directory name by replacing invalid characters with
+    underscores. Handles the invalid characters specific to Windows, macOS,
+    and Linux.
+
+    Args:
+        directory_name (str): The original directory name to sanitize.
+
+    Returns:
+        str: The sanitized directory name.
+    """
+    invalid_chars_dict = {
+        'nt': r'[\\/:*?"<>|]',  # Windows
+        'posix': r'[/:]'        # macOS and Linux
+    }
+    invalid_chars = invalid_chars_dict.get(os.name)
+    return re.sub(invalid_chars, '_', directory_name)
+
 def create_download_directory(directory_name):
     """
     Creates a directory for downloads if it doesn't exist.
@@ -115,8 +135,11 @@ def create_download_directory(directory_name):
         OSError: If there is an error creating the directory.
     """
     download_path = (
-        os.path.join(DOWNLOAD_FOLDER, directory_name) if directory_name
-        else DOWNLOAD_FOLDER
+        os.path.join(
+            DOWNLOAD_FOLDER,
+            sanitize_directory_name(directory_name)
+        )
+        if directory_name else DOWNLOAD_FOLDER
     )
 
     try:
