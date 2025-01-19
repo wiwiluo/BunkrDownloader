@@ -8,7 +8,7 @@
 
 - Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
-- Skips files whose filenames contain any string in the ignore list, if provided.
+- Skips files whose filenames contain any string in the [Ignore List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#ignore-list), if provided.
 - Progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
@@ -27,13 +27,16 @@ project-root/
 ├── helpers/
 │ ├── crawlers/
 │ │ └── crawler_utils.py     # Utilities for extracting media download links
+│ ├── downloader/
+│ │ └── album_downloader.py  # Manages the downloading of entire albums
+│ │ ├── download_utils.py    # Utilities for managing the download process
+│ │ └── media_downloader.py  # Manages the downloading of individual media files
 │ ├── managers/
 │ │ ├── live_manager.py      # Manages a real-time live display
 │ │ ├── log_manager.py       # Manages real-time log updates
 │ │ └── progress_manager.py  # Manages progress bars
 │ ├── bunkr_utils.py         # Utilities for checking Bunkr status
 │ ├── config.py              # Manages constants and settings used across the project
-│ ├── download_utils.py      # Utilities for managing the download process
 │ ├── file_utils.py          # Utilities for managing file operations
 │ ├── general_utils.py       # Miscellaneous utility functions
 │ └── url_utils.py           # Utilities for Bunkr URLs
