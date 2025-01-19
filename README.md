@@ -81,6 +81,8 @@ python3 downloader.py <bunkr_url>
 
 ### Examples
 
+You can either download an entire album or a specific file:
+
 ```
 python3 downloader.py https://bunkr.si/a/PUK068QE       # Download album
 python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
@@ -96,7 +98,7 @@ The ignore list is specified using the `--ignore` argument in the command line. 
 python3 downloader.py <bunkr_album_url> --ignore <ignore_list>
 ```
 
-### Examples
+### Example
 
 This feature is particularly useful when you want to skip files with certain extensions, such as `.zip` files. For instance:
 
