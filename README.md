@@ -63,12 +63,6 @@ cd BunkrDownloader
 pip install -r requirements.txt
 ```
 
-4. Ensure you have Playwright installed and set up installing Firefox:
-
-```bash
-playwright install firefox
-```
-
 ## Single Download
 
 To download a single media from an URL, you can use `downloader.py`, running the script with a valid album or media URL.
