@@ -69,7 +69,7 @@ pip install -r requirements.txt
 playwright install firefox
 ```
 
-## Single Media Download
+## Single Download
 
 To download a single media from an URL, you can use `downloader.py`, running the script with a valid album or media URL.
 
@@ -82,8 +82,8 @@ python3 downloader.py <bunkr_url>
 ### Examples
 
 ```
-python3 downloader.py https://bunkr.si/a/PUK068QE
-python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW
+python3 downloader.py https://bunkr.si/a/PUK068QE       # Download album
+python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 ```
 
 ## Ignore List
