@@ -13,7 +13,7 @@ import sys
 import time
 import random
 import asyncio
-from asyncio import Semaphore
+import argparse
 
 import requests
 from requests.exceptions import (
@@ -67,11 +67,12 @@ class MediaDownloader:
         retries (int): Maximum number of retry attempts for failed downloads.
     """
 
-    def __init__(self, session_info, download_info, live_manager, retries=5):
+    def __init__(self, session_info, download_info, live_manager, retries=5, ignore=None):
         self.bunkr_status, self.download_path = session_info
         self.download_link, self.file_name, self.task = download_info
         self.live_manager = live_manager
         self.retries = retries
+        self.ignore = ignore
 
     def handle_request_exception(self, req_err, attempt):
         """Handles exceptions during the request and manages retries."""
@@ -110,6 +111,20 @@ class MediaDownloader:
             )
             self.live_manager.update_task(
                 self.task, completed=100, visible=False
+            )
+            return True
+        return False
+
+    def skip_blacklisted_file(self):
+        """Skip download if file name is in the ignore list."""
+        if self.ignore and any(word in self.file_name for word in self.ignore):
+            self.live_manager.update_log(
+                "Skipped download",
+                f"{self.file_name} was skipped because "
+                "it contains words in the ignore list."
+            )
+            self.live_manager.update_task(
+               self.task, completed=100, visible=False
             )
             return True
         return False
@@ -163,8 +178,12 @@ class MediaDownloader:
     def download(self):
         """Main method to handle the download process."""
         retry_failed = self.retries == 1
-        if subdomain_is_offline(self.download_link, self.bunkr_status) and \
-            retry_failed:
+        is_offline = subdomain_is_offline(
+            self.download_link,
+            self.bunkr_status
+        )
+
+        if is_offline and retry_failed:
             self.live_manager.update_log(
                 "Non-operational subdomain",
                 f"The subdomain for {self.file_name} appears to be offline. "
@@ -180,12 +199,17 @@ class MediaDownloader:
         if self.check_and_skip_existing_file(final_path):
             return None
 
+        # Skip download if file name is in the ignore list
+        if self.skip_blacklisted_file():
+            return None
+
         # Attempt to download the file with retries
         failed_download = self.attempt_download(final_path)
 
         # Handle failed download after retries
         if failed_download:
             return self.handle_failed_download(retry_failed)
+
         return None
 
 class AlbumDownloader:
@@ -203,11 +227,12 @@ class AlbumDownloader:
                                  process.
     """
 
-    def __init__(self, session_info, album_info, live_manager):
+    def __init__(self, session_info, album_info, live_manager, ignore):
         self.bunkr_status, self.download_path = session_info
         self.album_id, self.item_pages = album_info
         self.live_manager = live_manager
         self.failed_downloads = []
+        self.ignore = ignore
 
     async def execute_item_download(self, item_page, current_task, semaphore):
         """Handles the download of an individual item in the album."""
@@ -226,7 +251,8 @@ class AlbumDownloader:
                 downloader = MediaDownloader(
                     session_info=(self.bunkr_status, self.download_path),
                     download_info=(item_download_link, item_file_name, task),
-                    live_manager=self.live_manager
+                    live_manager=self.live_manager,
+                    ignore=self.ignore
                 )
 
                 failed_download = await asyncio.to_thread(downloader.download)
@@ -263,7 +289,7 @@ class AlbumDownloader:
         )
 
         # Create tasks for downloading each item in the album
-        semaphore = Semaphore(max_workers)
+        semaphore = asyncio.Semaphore(max_workers)
         tasks = [
             self.execute_item_download(item_page, current_task, semaphore)
             for current_task, item_page in enumerate(self.item_pages)
@@ -276,20 +302,22 @@ class AlbumDownloader:
             await self.process_failed_downloads()
 
 async def handle_download_process(
-    bunkr_status, page_info, download_path, live_manager
+    bunkr_status, page_info, download_path, live_manager, ignore
 ):
     """
-    Handles the download process for a Bunkr album or single item.
+    Handles the download process for a Bunkr album or a single item.
 
     Args:
         bunkr_status (dict): Current status of Bunkr subdomains.
-        page_info (tuple): A tuple containing:
+        page_info (tuple): Contains details of the page to process:
             - url (str): The URL of the item or album to download.
-            - soup (BeautifulSoup): The parsed HTML content of the page.
-        download_path (str): Path to save the downloaded files.
-        live_manager (LiveManager): The live display manager that handles
-                                    updating the live view of the download
-                                    process.
+            - soup (BeautifulSoup): Parsed HTML content of the page.
+        download_path (str): The directory path where downloaded files will be
+                             saved.
+        live_manager (LiveManager): Manages the live display and updates
+                                    during the download process.
+        ignore (list of str, optional): A list of strings to ignore during the
+                                        download process.
     """
     (url, soup) = page_info
     host_page = get_host_page(url)
@@ -300,7 +328,8 @@ async def handle_download_process(
         album_downloader = AlbumDownloader(
             session_info=(bunkr_status, download_path),
             album_info=(identifier, item_pages),
-            live_manager=live_manager
+            live_manager=live_manager,
+            ignore=ignore
         )
         await album_downloader.download_album()
 
@@ -316,25 +345,25 @@ async def handle_download_process(
         )
         downloader.download()
 
-async def validate_and_download(bunkr_status, url, live_manager):
+async def validate_and_download(bunkr_status, url, live_manager, ignore=None):
     """
-    Validates the provided URL, fetches the associated page, and initiates
-    the download process for the album or item.
+    Validates the provided URL, prepares the download directory, and initiates
+    the download process.
 
     Args:
-        bunkr_status (dict): A dictionary representing the current status
-                             of Bunkr subdomains.
-        url (str): The URL of the album or item to download.
-        live_manager (LiveManager): The live display manager that handles
-                                    updating the live view of the download
-                                    process.
+        bunkr_status (object): The session status or context used for managing
+                               the download process.
+        url (str): The URL to validate and download content from.
+        live_manager (object): An object for managing live progress updates
+                               and task states.
+        ignore (list of str, optional): A list of strings to ignore during the
+                                        download process.
 
     Raises:
-        RequestConnectionError: If there is a network error while making the
-                                request.
-        Timeout: If the request times out while trying to fetch data.
-        RequestException: If there is any other exception related to the
-                          request.
+        RequestConnectionError: If there is a connection error during the
+                                download process.
+        Timeout: If the request times out while processing the URL.
+        RequestException: If there is a general request-related error.
     """
     soup = await fetch_page(url)
 
@@ -352,7 +381,8 @@ async def validate_and_download(bunkr_status, url, live_manager):
             bunkr_status,
             (url, soup),
             download_path,
-            live_manager
+            live_manager,
+            ignore
         )
 
     except (RequestConnectionError, Timeout, RequestException) as err:
@@ -372,23 +402,50 @@ def initialize_managers():
     logger_table = LoggerTable()
     return LiveManager(progress_manager, logger_table)
 
+def parse_arguments():
+    """
+    Parses command-line arguments for the URL and an optional ignore list.
+
+    Returns:
+        Namespace: Parsed arguments, including:
+            - url (str): The URL to process (required).
+            - ignore (list of str): A list of substrings; files whose names
+                                    contain any of these substrings will be
+                                    skipped (optional).
+    """
+    parser = argparse.ArgumentParser(
+        description='Acquire URL and other arguments.'
+    )
+    parser.add_argument(
+        'url',
+        type=str,
+        help='The URL to process'
+    )
+    parser.add_argument(
+        '--ignore',
+        type=str,
+        nargs='+',
+        help='A list of substrings to match against filenames.'
+             'Files containing any of these substrings in their names '
+             'will be skipped.'
+    )
+    args = parser.parse_args()
+    return args
+
 async def main():
     """
     Main function for initiating the download process.
     """
-    if len(sys.argv) != 2:
-        script_name = os.path.basename(__file__)
-        print(f"Usage: python3 {script_name} <album_url>")
-        sys.exit(1)
-
     clear_terminal()
     bunkr_status = get_bunkr_status()
     live_manager = initialize_managers()
-    url = sys.argv[1]
+    args = parse_arguments()
 
     try:
         with live_manager.live:
-            await validate_and_download(bunkr_status, url, live_manager)
+            await validate_and_download(
+                bunkr_status, args.url, live_manager, ignore=args.ignore
+            )
             live_manager.stop()
 
     except KeyboardInterrupt:
