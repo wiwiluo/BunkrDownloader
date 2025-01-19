@@ -8,6 +8,7 @@
 
 - Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
+- Skips files whose filenames contain any string in the ignore list, if provided.
 - Progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
@@ -78,10 +79,29 @@ To download a single media from an URL, you can use `downloader.py`, running the
 python3 downloader.py <bunkr_url>
 ```
 
-### Example
+### Examples
 
 ```
 python3 downloader.py https://bunkr.si/a/PUK068QE
+python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW
+```
+
+## Ignore List
+
+The ignore list is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the ignore list. Each item in the list should be separated by a space.
+
+### Usage
+
+```bash
+python3 downloader.py <bunkr_album_url> --ignore <ignore_list>
+```
+
+### Examples
+
+This feature is particularly useful when you want to skip files with certain extensions, such as `.zip` files. For instance:
+
+```bash
+python3 downloader.py https://bunkr.si/a/PUK068QE --ignore .zip
 ```
 
 ## Batch Download
