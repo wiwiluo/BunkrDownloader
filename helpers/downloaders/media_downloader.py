@@ -35,20 +35,18 @@ class MediaDownloader:
         live_manager (LiveManager): Facilitates live display of download
                                     progress and logging.
         retries (int): Maximum number of retry attempts for download failures.
-        ignore_list (list or None): Optional list of substrings to check
-                                    against file names for skipping downloads.
     """
 
     def __init__(
         self, session_info, download_info, live_manager,
         retries=5,
-        ignore_list=None
+        args=None
     ):
         self.bunkr_status, self.download_path = session_info
         self.download_link, self.file_name, self.task = download_info
         self.live_manager = live_manager
         self.retries = retries
-        self.ignore_list = ignore_list
+        self.args = args
 
     def handle_request_exception(self, req_err, attempt):
         """Handles exceptions during the request and manages retries."""
@@ -80,34 +78,53 @@ class MediaDownloader:
 
     def skip_file_download(self, final_path):
         """
-        Check if the file exists or is in the ignore list. If so, skip the
-        download.
+        Check if the file exists or is in the ignore list, or is not in the
+        include list. If so, skip the download.
         """
-        already_downloaded = os.path.exists(final_path)
-        is_blacklisted = (
-            self.ignore_list is not None
-            and any(word in self.file_name for word in self.ignore_list)
-        )
-        skip_conditions = [
-            (
-                already_downloaded,
+        # Check if the file already exists
+        if os.path.exists(final_path):
+            self.live_manager.update_log(
+                "Skipped download",
                 f"{self.file_name} has already been downloaded."
-            ),
-            (
-                is_blacklisted,
-                f"{self.file_name} was skipped because it contains words in "
-                "the ignore list."
-            ),
-        ]
+            )
+            self.live_manager.update_task(
+                self.task, completed=100, visible=False
+            )
+            return True
 
-        for condition, description in skip_conditions:
-            if condition:
-                self.live_manager.update_log("Skipped download", description)
-                self.live_manager.update_task(
-                    self.task, completed=100, visible=False
-                )
-                return True
+        # Check if the file is in the ignore list (if specified)
+        is_in_ignore = (
+            self.args.ignore
+            and any(word in self.file_name for word in self.args.ignore)
+        )
+        if is_in_ignore:
+            self.live_manager.update_log(
+                "Skipped download",
+                f"{self.file_name} was skipped because it contains "
+                "words in the ignore list."
+            )
+            self.live_manager.update_task(
+                self.task, completed=100, visible=False
+            )
+            return True
 
+        # Check if the file is not in the include list (if specified)
+        not_in_include = (
+            self.args.include
+            and all(word not in self.file_name for word in self.args.include)
+        )
+        if not_in_include:
+            self.live_manager.update_log(
+                "Skipped download",
+                f"{self.file_name} was skipped because it does not contain "
+                "words in the include list."
+            )
+            self.live_manager.update_task(
+                self.task, completed=100, visible=False
+            )
+            return True
+
+        # If none of the skip conditions are met, return False (do not skip)
         return False
 
     def attempt_download(self, final_path):
