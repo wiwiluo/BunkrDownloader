@@ -44,7 +44,7 @@ from helpers.url_utils import (
 )
 
 async def handle_download_process(
-    bunkr_status, page_info, download_path, live_manager, ignore_list
+    bunkr_status, page_info, download_path, live_manager, args
 ):
     """
     Handles the download process for a Bunkr album or a single item.
@@ -58,8 +58,6 @@ async def handle_download_process(
                              saved.
         live_manager (LiveManager): Manages the live display and updates
                                     during the download process.
-        ignore_list (list of str, optional): A list of strings to ignore
-                                             during the download process.
     """
     (url, soup) = page_info
     host_page = get_host_page(url)
@@ -71,7 +69,7 @@ async def handle_download_process(
             session_info=(bunkr_status, download_path),
             album_info=(identifier, item_pages),
             live_manager=live_manager,
-            ignore_list=ignore_list
+            args=args
         )
         await album_downloader.download_album()
 
@@ -87,9 +85,7 @@ async def handle_download_process(
         )
         downloader.download()
 
-async def validate_and_download(
-    bunkr_status, url, live_manager, ignore_list=None
-):
+async def validate_and_download(bunkr_status, url, live_manager, args=None):
     """
     Validates the provided URL, prepares the download directory, and initiates
     the download process.
@@ -100,8 +96,6 @@ async def validate_and_download(
         url (str): The URL to validate and download content from.
         live_manager (object): An object for managing live progress updates
                                and task states.
-        ignore_list (list of str, optional): A list of strings to ignore
-                                             during the download process.
 
     Raises:
         RequestConnectionError: If there is a connection error during the
@@ -126,7 +120,7 @@ async def validate_and_download(
             (url, soup),
             download_path,
             live_manager,
-            ignore_list
+            args=args
         )
 
     except (RequestConnectionError, Timeout, RequestException) as err:
@@ -148,7 +142,8 @@ def initialize_managers():
 
 def parse_arguments():
     """
-    Parses command-line arguments for the URL and an optional ignore list.
+    Parses command-line arguments for the URL, an optional ignore list, and an
+    optional include list.
 
     Returns:
         Namespace: Parsed arguments, including:
@@ -156,6 +151,9 @@ def parse_arguments():
             - ignore_list (list of str): A list of substrings; files whose
                                          names contain any of these substrings
                                          will be skipped (optional).
+            - include_list (list of str): A list of substrings; files whose
+                                         names contain any of these substrings
+                                         will only be downloaded (optional).
     """
     parser = argparse.ArgumentParser(
         description='Acquire URL and other arguments.'
@@ -169,9 +167,17 @@ def parse_arguments():
         '--ignore',
         type=str,
         nargs='+',
-        help='A list of substrings to match against filenames.'
-             'Files containing any of these substrings in their names '
-             'will be skipped.'
+        help='A list of substrings to match against filenames. '
+             'Files containing any of these substrings '
+             'in their names will be skipped.'
+    )
+    parser.add_argument(
+        '--include',
+        type=str,
+        nargs='+',
+        help='A list of substrings to match against filenames. '
+             'Files containing any of these substrings '
+             'in their names will be downloaded.'
     )
     args = parser.parse_args()
     return args
@@ -191,7 +197,7 @@ async def main():
                 bunkr_status,
                 args.url,
                 live_manager,
-                ignore_list=args.ignore
+                args=args
             )
             live_manager.stop()
 
