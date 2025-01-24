@@ -89,7 +89,7 @@ python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 
 The script supports selective file downloads from an album, allowing you to exclude files using the Ignore List and include specific files with the Include List.
 
-### Ignore List
+## Ignore List
 
 The Ignore List is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the list. Item in the list should be separated by a space.
 
@@ -107,7 +107,7 @@ This feature is particularly useful when you want to skip files with certain ext
 python3 downloader.py https://bunkr.si/a/PUK068QE --ignore .zip
 ```
 
-### Include List
+## Include List
 
 The Include List is specified using the `--include` argument in the command line. This allows you to download a file from an album only if its filename contains at least one of the specified strings in the list. Items in the list should be separated by a space.
 
