@@ -27,12 +27,12 @@ class AlbumDownloader:
                                  process.
     """
 
-    def __init__(self, session_info, album_info, live_manager, ignore_list):
+    def __init__(self, session_info, album_info, live_manager, args):
         self.bunkr_status, self.download_path = session_info
         self.album_id, self.item_pages = album_info
         self.live_manager = live_manager
         self.failed_downloads = []
-        self.ignore_list = ignore_list
+        self.args = args
 
     async def execute_item_download(self, item_page, current_task, semaphore):
         """Handles the download of an individual item in the album."""
@@ -52,7 +52,7 @@ class AlbumDownloader:
                     session_info=(self.bunkr_status, self.download_path),
                     download_info=(item_download_link, item_file_name, task),
                     live_manager=self.live_manager,
-                    ignore_list=self.ignore_list
+                    args=self.args
                 )
 
                 failed_download = await asyncio.to_thread(downloader.download)
