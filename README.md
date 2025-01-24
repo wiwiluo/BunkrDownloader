@@ -8,7 +8,7 @@
 
 - Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
-- Filters files based on the [Ignore List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#ignore-list) and Include List, if provided.
+- Supports selective downloads of the files.
 - Progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
@@ -85,11 +85,13 @@ python3 downloader.py https://bunkr.si/a/PUK068QE       # Download album
 python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 ```
 
-## Filtering
+## Selective Downloads
+
+The script supports selective file downloads from an album, allowing you to exclude files using the Ignore List and include specific files with the Include List.
 
 ### Ignore List
 
-The ignore list is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the ignore list. Item in the list should be separated by a space.
+The Ignore List is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the list. Item in the list should be separated by a space.
 
 ### Usage
 
@@ -107,12 +109,12 @@ python3 downloader.py https://bunkr.si/a/PUK068QE --ignore .zip
 
 ### Include List
 
-The include list is specified using the `--include` argument in the command line. This allows you to download a file from an album only if its filename contains at least one of the specified strings in the include list. Items in the list should be separated by a space.
+The Include List is specified using the `--include` argument in the command line. This allows you to download a file from an album only if its filename contains at least one of the specified strings in the list. Items in the list should be separated by a space.
 
 ### Usage
 
 ```bash
-python3 downloader.py <bunkr_album_url> --include <ignore_list>
+python3 downloader.py <bunkr_album_url> --include <include_list>
 ```
 
 ### Example
