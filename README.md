@@ -8,7 +8,7 @@
 
 - Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
-- Skips files whose filenames contain any string in the [Ignore List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#ignore-list), if provided.
+- Filters files based on the [Ignore List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#ignore-list) and Include List, if provided.
 - Progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
@@ -85,9 +85,11 @@ python3 downloader.py https://bunkr.si/a/PUK068QE       # Download album
 python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 ```
 
-## Ignore List
+## Filtering
 
-The ignore list is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the ignore list. Each item in the list should be separated by a space.
+### Ignore List
+
+The ignore list is specified using the `--ignore` argument in the command line. This allows you to skip the download of any file from an album if its filename contains at least one of the specified strings in the ignore list. Item in the list should be separated by a space.
 
 ### Usage
 
@@ -101,6 +103,22 @@ This feature is particularly useful when you want to skip files with certain ext
 
 ```bash
 python3 downloader.py https://bunkr.si/a/PUK068QE --ignore .zip
+```
+
+### Include List
+
+The include list is specified using the `--include` argument in the command line. This allows you to download a file from an album only if its filename contains at least one of the specified strings in the include list. Items in the list should be separated by a space.
+
+### Usage
+
+```bash
+python3 downloader.py <bunkr_album_url> --include <ignore_list>
+```
+
+### Example
+
+```bash
+python3 downloader.py https://bunkr.si/a/PUK068QE --include FullSizeRender
 ```
 
 ## Batch Download
