@@ -8,7 +8,7 @@
 
 - Downloads multiple files from an album concurrently.
 - Supports batch downloading via a list of URLs.
-- Supports [selective files downloading](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#selective-downloads) based on filename criteria.
+- Supports [selective files downloading](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#selective-download) based on filename criteria.
 - Provides progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
