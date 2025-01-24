@@ -85,7 +85,7 @@ python3 downloader.py https://bunkr.si/a/PUK068QE       # Download album
 python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 ```
 
-## Selective Downloads
+## Selective Download
 
 The script supports selective file downloads from an album, allowing you to exclude files using the Ignore List and include specific files with the Include List.
 
