@@ -7,7 +7,7 @@
 ## Features
 
 - Downloads multiple files from an album concurrently.
-- Supports batch downloading via a list of URLs.
+- Supports [batch downloading](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#batch-download) via a list of URLs.
 - Supports [selective files downloading](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#selective-download) based on filename criteria.
 - Provides progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
@@ -87,7 +87,7 @@ python3 downloader.py https://bunkr.fi/f/gBrv5f8tAGlGW  # Download single media
 
 ## Selective Download
 
-The script supports selective file downloads from an album, allowing you to exclude files using the Ignore List and include specific files with the Include List.
+The script supports selective file downloads from an album, allowing you to exclude files using the [Ignore List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#ignore-list) and include specific files with the [Include List](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#include-list).
 
 ## Ignore List
 
