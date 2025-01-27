@@ -2,7 +2,10 @@
 Module for extracting media download links from item pages.
 """
 
+import os
+
 from helpers.general_utils import fetch_page
+from helpers.url_utils import get_url_based_filename
 
 def extract_item_pages(soup, host_page):
     """
@@ -158,11 +161,36 @@ def get_item_filename(item_soup):
     Returns:
         str: The extracted filename text.
     """
-    filename_container = item_soup.find(
+    item_filename_container = item_soup.find(
         'h1',
         {'class': "text-subs font-semibold text-base sm:text-lg truncate"}
     )
-    return filename_container.get_text()
+    return item_filename_container.get_text()
+
+
+def format_item_filename(filename, url_based_filename):
+    """
+    Combines two filenames into a single filename, keeping the extension of the
+    first file. If the two filenames are identical, returns the first filename.
+
+    Args:
+        filename (str): The first filename, whose extension will be used.
+        url_based_filename (str): The second filename to combine, derived
+                                  from a URL.
+
+    Returns:
+        str: The combined filename with the extension of the first file, or the
+             first filename if both are identical.
+    """
+    if filename == url_based_filename:
+        return filename
+
+    # Extract the base names (without extensions) and the extension
+    base1, extension = os.path.splitext(filename)
+    base2, _ = os.path.splitext(url_based_filename)
+
+    # Combine the base names with a hyphen and append the extension
+    return f"{base1}-{base2}{extension}"
 
 async def get_download_info(item_soup):
     """
@@ -176,8 +204,14 @@ async def get_download_info(item_soup):
     """
     item_download_link = await get_item_download_link(item_soup)
 
-    item_file_name = (
-        get_item_filename(item_soup) if item_download_link
+    item_filename = get_item_filename(item_soup)
+    url_based_filename = (
+        get_url_based_filename(item_download_link) if item_download_link
         else None
     )
-    return item_download_link, item_file_name
+    formatted_item_filename = format_item_filename(
+        item_filename,
+        url_based_filename
+    )
+
+    return item_download_link, formatted_item_filename
