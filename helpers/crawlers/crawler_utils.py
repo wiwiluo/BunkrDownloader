@@ -3,7 +3,6 @@ Module for extracting media download links from item pages.
 """
 
 from helpers.general_utils import fetch_page
-from helpers.url_utils import get_item_filename
 
 def extract_item_pages(soup, host_page):
     """
@@ -148,6 +147,23 @@ async def get_item_download_link(item_soup):
 
     return None
 
+def get_item_filename(item_soup):
+    """
+    Extracts the filename from the provided HTML soup.
+
+    Args:
+        item_soup (BeautifulSoup): The parsed HTML content containing the item
+                                   information.
+
+    Returns:
+        str: The extracted filename text.
+    """
+    filename_container = item_soup.find(
+        'h1',
+        {'class': "text-subs font-semibold text-base sm:text-lg truncate"}
+    )
+    return filename_container.get_text()
+
 async def get_download_info(item_soup):
     """
     Gathers download information (link and filename) for the item.
@@ -161,7 +177,7 @@ async def get_download_info(item_soup):
     item_download_link = await get_item_download_link(item_soup)
 
     item_file_name = (
-        get_item_filename(item_download_link) if item_download_link
+        get_item_filename(item_soup) if item_download_link
         else None
     )
     return item_download_link, item_file_name
