@@ -148,19 +148,19 @@ def get_item_type(item_page):
 
     return None
 
-def get_item_filename(item_download_link):
-    """
-    Extracts the filename from a download link URL by removing any directory
-    structure.
+#def get_item_filename(item_download_link):
+#    """
+#    Extracts the filename from a download link URL by removing any directory
+#    structure.
 
-    Args:
-        item_download_link (str): The URL of the download link that contains
-                                  the filename in its path.
+#    Args:
+#        item_download_link (str): The URL of the download link that contains
+#                                  the filename in its path.
 
-    Returns:
-        str: The cleaned filename extracted from the URL, without any directory
-             structure.
-    """
-    parsed_url = urlparse(item_download_link)
-    # The download link path contains the filename, preceded by a '/'
-    return parsed_url.path.replace('/', '')
+#    Returns:
+#        str: The cleaned filename extracted from the URL, without any directory
+#             structure.
+#    """
+#    parsed_url = urlparse(item_download_link)
+#    # The download link path contains the filename, preceded by a '/'
+#    return parsed_url.path.replace('/', '')
