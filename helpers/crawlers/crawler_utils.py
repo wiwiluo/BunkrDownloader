@@ -85,11 +85,6 @@ async def get_non_media_download_link(item_soup):
     Returns:
         str: The download link (URL) of the non-media item extracted from the
              second page.
-    
-    Raises:
-        AttributeError: If the necessary download link or buttons are not found
-                        on the pages.
-        Exception: If there is any issue during fetching or parsing the pages.
     """
     # Find the first download button in the initial page
     non_media_container = item_soup.find(
@@ -167,30 +162,33 @@ def get_item_filename(item_soup):
     )
     return item_filename_container.get_text()
 
-
-def format_item_filename(filename, url_based_filename):
+def format_item_filename(original_filename, url_based_filename):
     """
-    Combines two filenames into a single filename, keeping the extension of the
-    first file. If the two filenames are identical, returns the first filename.
+    Combines two filenames while preserving the extension of the first.
+    If the filenames are identical, returns the first filename.
+    If the base of the first filename is found within the second,
+    returns the second filename. Otherwise, combines both bases with a hyphen.
 
     Args:
-        filename (str): The first filename, whose extension will be used.
-        url_based_filename (str): The second filename to combine, derived
-                                  from a URL.
+        original_filename (str): The primary filename, whose extension is
+                                 retained.
+        url_based_filename (str): The secondary filename, derived from a URL.
 
     Returns:
-        str: The combined filename with the extension of the first file, or the
-             first filename if both are identical.
+        str: The merged filename with the extension of the first file.
     """
-    if filename == url_based_filename:
-        return filename
+    if original_filename == url_based_filename:
+        return original_filename
 
     # Extract the base names (without extensions) and the extension
-    base1, extension = os.path.splitext(filename)
-    base2, _ = os.path.splitext(url_based_filename)
+    original_base, extension = os.path.splitext(original_filename)
+    url_base, _ = os.path.splitext(url_based_filename)
+
+    if original_base in url_base:
+        return url_based_filename 
 
     # Combine the base names with a hyphen and append the extension
-    return f"{base1}-{base2}{extension}"
+    return f"{original_base}-{url_base}{extension}"
 
 async def get_download_info(item_soup):
     """
