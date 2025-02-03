@@ -81,33 +81,29 @@ class MediaDownloader:
         Check if the file exists or is in the ignore list, or is not in the
         include list. If so, skip the download.
         """
+        def log_and_skip(reason):
+            self.live_manager.update_log("Skipped download", reason)
+            self.live_manager.update_task(
+                self.task,
+                completed=100,
+                visible=False
+            )
+            return True
+
         ignore_list = getattr(self.args, 'ignore', [])
         include_list = getattr(self.args, 'include', [])
 
         # Check if the file already exists
         if os.path.exists(final_path):
-            self.live_manager.update_log(
-                "Skipped download",
-                f"{self.file_name} has already been downloaded."
-            )
-            self.live_manager.update_task(
-                self.task, completed=100, visible=False
-            )
-            return True
+            return log_and_skip(f"{self.file_name} already exists.")
 
         # Check if the file is in the ignore list (if specified)
         if ignore_list:
             is_in_ignore = any(word in self.file_name for word in ignore_list)
             if is_in_ignore:
-                self.live_manager.update_log(
-                    "Skipped download",
-                    f"{self.file_name} was skipped because it contains "
-                    "words in the ignore list."
+                return log_and_skip(
+                    f"{self.file_name} contains ignored words."
                 )
-                self.live_manager.update_task(
-                    self.task, completed=100, visible=False
-                )
-                return True
 
         # Check if the file is not in the include list (if specified)
         if include_list:
@@ -116,15 +112,9 @@ class MediaDownloader:
                 for word in include_list
             )
             if not_in_include:
-                self.live_manager.update_log(
-                    "Skipped download",
-                    f"{self.file_name} was skipped because it does not contain "
-                    "words in the include list."
+                return log_and_skip(
+                    f"{self.file_name} does not contain required words."
                 )
-                self.live_manager.update_task(
-                    self.task, completed=100, visible=False
-                )
-                return True
 
         # If none of the skip conditions are met, return False (do not skip)
         return False
