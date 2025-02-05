@@ -179,9 +179,8 @@ class MediaDownloader:
         self.live_manager.update_log("Request error", str(req_err))
         return False
 
-    def handle_failed_download(self):
+    def handle_failed_download(self, is_final_attempt):
         """Handle a failed download after all retry attempts."""
-        is_final_attempt = self.retries == 1
         if not is_final_attempt:
             self.live_manager.update_log(
                 "Exceeded retry attempts",
@@ -204,12 +203,13 @@ class MediaDownloader:
 
     def download(self):
         """Main method to handle the download process."""
+        is_final_attempt = self.retries == 1
         is_offline = subdomain_is_offline(
             self.download_link,
             self.bunkr_status
         )
 
-        if is_offline:
+        if is_offline and is_final_attempt:
             self.live_manager.update_log(
                 "Non-operational subdomain",
                 f"The subdomain for {self.file_name} appears to be offline. "
@@ -230,6 +230,6 @@ class MediaDownloader:
 
         # Handle failed download after retries
         if failed_download:
-            return self.handle_failed_download()
+            return self.handle_failed_download(is_final_attempt)
 
         return None
