@@ -16,7 +16,28 @@ import requests
 from bs4 import BeautifulSoup
 
 from .file_utils import write_on_session_log
-from .config import DOWNLOAD_FOLDER
+from .config import (
+    DOWNLOAD_FOLDER,
+    DOWNLOAD_HEADERS as HEADERS
+)
+
+def validate_download_link(download_link):
+    """
+    Check if a download link is accessible.
+
+    Args:
+        download_link (str): The URL to validate.
+
+    Returns:
+        bool: True if the link is accessible, False if blocked (521 status) or
+              if a request error occurs.
+    """
+    try:
+        response = requests.head(download_link, headers=HEADERS, timeout=5)
+        return response.status_code != 521
+
+    except requests.RequestException as req_err:
+        return False
 
 async def fetch_page(url, retries=5):
     """
