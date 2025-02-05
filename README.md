@@ -28,7 +28,7 @@ project-root/
 │ ├── crawlers/
 │ │ └── crawler_utils.py     # Utilities for extracting media download links
 │ ├── downloaders/
-│ │ └── album_downloader.py  # Manages the downloading of entire albums
+│ │ ├── album_downloader.py  # Manages the downloading of entire albums
 │ │ ├── download_utils.py    # Utilities for managing the download process
 │ │ └── media_downloader.py  # Manages the downloading of individual media files
 │ ├── managers/
