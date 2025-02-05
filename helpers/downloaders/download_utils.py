@@ -60,3 +60,6 @@ def save_file_with_progress(response, download_path, task, progress_manager):
                 total_downloaded += len(chunk)
                 completed = (total_downloaded / file_size) * 100
                 progress_manager.update_task(task, completed=completed)
+
+        # Return True if the download is incomplete
+        return total_downloaded != file_size
