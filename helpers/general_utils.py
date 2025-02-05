@@ -36,7 +36,7 @@ def validate_download_link(download_link):
         response = requests.head(download_link, headers=HEADERS, timeout=5)
         return response.status_code != 521
 
-    except requests.RequestException as req_err:
+    except requests.RequestException:
         return False
 
 async def fetch_page(url, retries=5):
