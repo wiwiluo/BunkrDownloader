@@ -38,9 +38,7 @@ class MediaDownloader:
     """
 
     def __init__(
-        self, session_info, download_info, live_manager,
-        retries=5,
-        args=None
+        self, session_info, download_info, live_manager, retries=5, args=None
     ):
         self.bunkr_status, self.download_path = session_info
         self.download_link, self.file_name, self.task = download_info
@@ -48,62 +46,38 @@ class MediaDownloader:
         self.retries = retries
         self.args = args
 
-    def handle_request_exception(self, req_err, attempt):
-        """Handles exceptions during the request and manages retries."""
-        if req_err.response is None:
-            # Mark the subdomain as offline and exit the loop
-            marked_subdomain = mark_subdomain_as_offline(
-                self.bunkr_status, self.download_link
-            )
-            self.live_manager.update_log(
-                "No response",
-                f"Subdomain {marked_subdomain} has been marked as offline."
-            )
-            return False
-
-        if req_err.response.status_code == 429:
-            self.live_manager.update_log(
-                "Too many requests",
-                f"Retrying to download {self.file_name}... "
-                f"({attempt + 1}/{self.retries})"
-            )
-            if attempt < self.retries - 1:
-                # Retry the request
-                delay = 4 ** (attempt + 1) + random.uniform(2, 4)
-                time.sleep(delay)
-                return True
-
-        # Do not retry, exit the loop
-        return False
-
     def skip_file_download(self, final_path):
         """
         Check if the file exists or is in the ignore list, or is not in the
         include list. If so, skip the download.
         """
-        def log_and_skip(reason):
-            self.live_manager.update_log("Skipped download", reason)
-            self.live_manager.update_task(
-                self.task,
-                completed=100,
-                visible=False
-            )
-            return True
-
         ignore_list = getattr(self.args, 'ignore', [])
         include_list = getattr(self.args, 'include', [])
 
         # Check if the file already exists
         if os.path.exists(final_path):
-            return log_and_skip(f"{self.file_name} already exists.")
+            self.live_manager.update_log(
+                "Skipped download",
+                f"{self.file_name} has already been downloaded."
+            )
+            self.live_manager.update_task(
+                self.task, completed=100, visible=False
+            )
+            return True
 
         # Check if the file is in the ignore list (if specified)
         if ignore_list:
             is_in_ignore = any(word in self.file_name for word in ignore_list)
             if is_in_ignore:
-                return log_and_skip(
-                    f"{self.file_name} contains ignored words."
+                self.live_manager.update_log(
+                    "Skipped download",
+                    f"{self.file_name} was skipped because it contains "
+                    "words in the ignore list."
                 )
+                self.live_manager.update_task(
+                    self.task, completed=100, visible=False
+                )
+                return True
 
         # Check if the file is not in the include list (if specified)
         if include_list:
@@ -112,9 +86,15 @@ class MediaDownloader:
                 for word in include_list
             )
             if not_in_include:
-                return log_and_skip(
-                    f"{self.file_name} does not contain required words."
+                self.live_manager.update_log(
+                    "Skipped download",
+                    f"{self.file_name} was skipped because it does not contain "
+                    "words in the include list."
                 )
+                self.live_manager.update_task(
+                    self.task, completed=100, visible=False
+                )
+                return True
 
         # If none of the skip conditions are met, return False (do not skip)
         return False
@@ -131,10 +111,13 @@ class MediaDownloader:
                 )
                 response.raise_for_status()
 
-                # Exit the loop if the download is successful
-                save_file_with_progress(
+                partial_download = save_file_with_progress(
                     response, final_path, self.task, self.live_manager
                 )
+                if partial_download:
+                    self.handle_partial_download()
+
+                # Exit the loop if the download is successful
                 return False
 
             except requests.RequestException as req_err:
@@ -142,20 +125,73 @@ class MediaDownloader:
                 if not self.handle_request_exception(req_err, attempt):
                     break
 
+        # Download failed
         return True
 
-    def handle_failed_download(self, retry_failed):
+    def handle_partial_download(self):
+        """Handles cases where a file is only partially downloaded."""
+        self.live_manager.update_log(
+            "Partial download",
+            f"{self.file_name} has been partially downloaded "
+            "because of empty data blocks. Check the log file."
+        )
+        write_on_session_log(self.download_link)
+        self.live_manager.update_task(
+            self.task, completed=100, visible=False
+        )
+
+    def handle_request_exception(self, req_err, attempt):
+        """Handles exceptions during the request and manages retries."""
+        if req_err.response is None or req_err.response.status_code == 521:
+            # Mark the subdomain as offline and exit the loop
+            marked_subdomain = mark_subdomain_as_offline(
+                self.bunkr_status, self.download_link
+            )
+            self.live_manager.update_log(
+                "No response",
+                f"Subdomain {marked_subdomain} has been marked as offline."
+            )
+            return False
+
+        if req_err.response.status_code in (429, 503):
+            self.live_manager.update_log(
+                "Too many requests",
+                f"Retrying to download {self.file_name}... "
+                f"({attempt + 1}/{self.retries})"
+            )
+            if attempt < self.retries - 1:
+                # Retry the request
+                delay = 4 ** (attempt + 1) + random.uniform(2, 4)
+                time.sleep(delay)
+                return True
+
+        if req_err.response.status_code == 502:
+            self.live_manager.update_log(
+                "Server error",
+                f"Bad gateway for {self.file_name}."
+            )
+            # Setting retries to 1 forces an immediate failure on the next
+            # check.
+            self.retries = 1
+            return False
+
+        # Do not retry, exit the loop
+        self.live_manager.update_log("Request error", str(req_err))
+        return False
+
+    def handle_failed_download(self):
         """Handle a failed download after all retry attempts."""
-        if not retry_failed:
+        is_final_attempt = self.retries == 1
+        if not is_final_attempt:
             self.live_manager.update_log(
                 "Exceeded retry attempts",
                 f"Exceeded retry attempts for {self.file_name}. "
                 "It will be retried one more time after all other tasks."
             )
             return {
-                'id': self.task,
-                'file_name': self.file_name,
-                'download_link': self.download_link
+                "id": self.task,
+                "file_name": self.file_name,
+                "download_link": self.download_link
             }
 
         self.live_manager.update_log(
@@ -168,13 +204,12 @@ class MediaDownloader:
 
     def download(self):
         """Main method to handle the download process."""
-        retry_failed = self.retries == 1
         is_offline = subdomain_is_offline(
             self.download_link,
             self.bunkr_status
         )
 
-        if is_offline and retry_failed:
+        if is_offline:
             self.live_manager.update_log(
                 "Non-operational subdomain",
                 f"The subdomain for {self.file_name} appears to be offline. "
@@ -195,6 +230,6 @@ class MediaDownloader:
 
         # Handle failed download after retries
         if failed_download:
-            return self.handle_failed_download(retry_failed)
+            return self.handle_failed_download()
 
         return None
