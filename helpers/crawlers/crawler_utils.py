@@ -4,8 +4,11 @@ Module for extracting media download links from item pages.
 
 import os
 
-from helpers.general_utils import fetch_page
 from helpers.url_utils import get_url_based_filename
+from helpers.general_utils import (
+    fetch_page,
+    validate_download_link
+)
 
 def extract_item_pages(soup, host_page):
     """
@@ -85,6 +88,11 @@ async def get_non_media_download_link(item_soup):
     Returns:
         str: The download link (URL) of the non-media item extracted from the
              second page.
+    
+    Raises:
+        AttributeError: If the necessary download link or buttons are not found
+                        on the pages.
+        Exception: If there is any issue during fetching or parsing the pages.
     """
     # Find the first download button in the initial page
     non_media_container = item_soup.find(
@@ -138,10 +146,18 @@ async def get_item_download_link(item_soup):
         return await get_non_media_download_link(item_soup)
 
     try:
-        return item_container['src']
+        download_link = item_container['src']
 
-    except AttributeError as err:
-        print(f"Error extracting source: {err}")
+        if validate_download_link(download_link):
+            return download_link
+
+        # If the standard download link is unavailable, extract the
+        # download link as a non-media file.
+        return await get_non_media_download_link(item_soup)
+#        return item_container['src']
+
+    except AttributeError as attr_err:
+        print(f"Error extracting source: {attr_err}")
 
     return None
 
@@ -185,7 +201,7 @@ def format_item_filename(original_filename, url_based_filename):
     url_base, _ = os.path.splitext(url_based_filename)
 
     if original_base in url_base:
-        return url_based_filename 
+        return url_based_filename
 
     # Combine the base names with a hyphen and append the extension
     return f"{original_base}-{url_base}{extension}"
