@@ -132,7 +132,7 @@ class MediaDownloader:
         """Handles cases where a file is only partially downloaded."""
         self.live_manager.update_log(
             "Partial download",
-            f"{self.file_name} has been partially downloaded "
+            f"The extension of {self.file_name} has been modified to '.temp' "
             "because of empty data blocks. Check the log file."
         )
         write_on_session_log(self.download_link)
