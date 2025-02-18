@@ -110,7 +110,7 @@ def create_download_directory(directory_name: str) -> str:
     )
 
     try:
-        download_path.mkdir(exist_ok=True)
+        download_path.mkdir(parents=True, exist_ok=True)
         return str(download_path)
 
     except OSError:
