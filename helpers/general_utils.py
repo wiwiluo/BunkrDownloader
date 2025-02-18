@@ -1,81 +1,59 @@
-"""
-This module provides utilities for fetching web pages, managing directories, 
-and clearing the terminal screen. It includes functions to handle common tasks 
-such as sending HTTP requests, parsing HTML, creating download directories, and
-clearing the terminal, making it reusable across projects.
-"""
+"""Utilities for fetching pages, managing directories, and clearing the terminal.
 
+It includes functions to handle common tasks such as sending HTTP requests,
+parsing HTML, creating download directories, and clearing the terminal, making it
+reusable across projects.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
 import os
+import random
 import re
 import sys
-import random
-import asyncio
 from http.client import RemoteDisconnected
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
+from requests import Response
 
-from .file_utils import write_on_session_log
 from .config import (
     DOWNLOAD_FOLDER,
-    DOWNLOAD_HEADERS as HEADERS
+    HTTP_STATUS_SERVER_DOWN,
 )
+from .config import DOWNLOAD_HEADERS as HEADERS
+from .file_utils import write_on_session_log
 
-def validate_download_link(download_link):
-    """
-    Check if a download link is accessible.
 
-    Args:
-        download_link (str): The URL to validate.
-
-    Returns:
-        bool: True if the link is accessible, False if blocked (521 status) or
-              if a request error occurs.
-    """
+def validate_download_link(download_link: str) -> bool:
+    """Check if a download link is accessible."""
     try:
         response = requests.head(download_link, headers=HEADERS, timeout=5)
-        return response.status_code != 521
+        return response.status_code != HTTP_STATUS_SERVER_DOWN
 
     except requests.RequestException:
         return False
 
-async def fetch_page(url, retries=5):
-    """
-    Fetches the HTML content of a page at the given URL, with retry logic and
-    exponential backoff.
 
-    Args:
-        url (str): The URL of the page to fetch. This should be a valid URL 
-                   pointing to a webpage.
-        retries (int, optional): The number of retry attempts in case of
-                                 failure (default is 5).
-
-    Returns:
-        BeautifulSoup: A BeautifulSoup object containing the parsed HTML
-                       content of the page.
-
-    Raises:
-        requests.RequestException: If there are issues with the HTTP request,
-                                   such as network problems or invalid URLs.
-        RemoteDisconnected: If the remote server closes the connection without
-                            sending a response.
-    """
+async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
+    """Fetch the HTML content of a page at the given URL, with retry logic."""
     error_messages = {
         500: f"Internal server error when fetching {url}",
         502: f"Bad gateway for {url}, probably offline",
-        403: f"DDoSGuard blocked the request to {url}"
+        403: f"DDoSGuard blocked the request to {url}",
     }
 
-    def handle_response(response):
-        """Processes the HTTP response and handles specific status codes."""
+    def handle_response(response: Response) -> BeautifulSoup | None:
+        """Process the HTTP response and handles specific status codes."""
         if response.status_code in error_messages:
-            print(
-                f"{error_messages[response.status_code]}, check the log file"
-            )
+            log_message = f"{error_messages[response.status_code]}, check the log file"
+            logging.exception(log_message)
             write_on_session_log(url)
             return None
 
-        return BeautifulSoup(response.text, 'html.parser')
+        return BeautifulSoup(response.text, "html.parser")
 
     for attempt in range(retries):
         try:
@@ -84,100 +62,67 @@ async def fetch_page(url, retries=5):
             return handle_response(response)
 
         except RemoteDisconnected:
-            print(
-                "Remote end closed connection without response. "
-                f"Retrying in a moment... ({attempt + 1}/{retries})"
-            )
+            logging.exception("Remote end closed connection without response.")
             if attempt < retries - 1:
                 # Add jitter to avoid a retry storm
-                delay = (2 ** (attempt + 1)) + random.uniform(0, 1)
+                delay = 2 ** (attempt + 1) + random.uniform(0, 2)
                 asyncio.sleep(delay)
 
-        except requests.RequestException:
-#            print(f"Request error for {url}: {req_err}")
+        except requests.RequestException as req_err:
+            log_message = f"Request error for {url}: {req_err}"
+            logging.exception(log_message)
             return None
 
     return None
 
-def format_directory_name(directory_name, directory_id):
-    """
-    Formats a directory name by appending its ID in parentheses if the ID is
-    provided. If the directory ID is `None`, only the directory name is
-    returned.
 
-    Args:
-        directory_name (str): The name of the directory to format.
-        directory_id (int or None): The ID of the directory. If `None`, the
-                                    function returns `None`.
+def format_directory_name(directory_name: str, directory_id: int | None) -> str | None:
+    """Format a directory name by appending its ID in parentheses if the ID is provided.
 
-    Returns:
-        str or None: A formatted string with the directory name followed by
-                     the ID in parentheses, or `None` if the `directory_id` is
-                     `None`.
+    If the directory ID is `None`, only the directory name is returned.
     """
     if directory_name is None:
         return directory_id
 
-    return  (
-        f"{directory_name} ({directory_id})" if directory_id is not None
-        else None
-    )
+    return f"{directory_name} ({directory_id})" if directory_id is not None else None
 
-def sanitize_directory_name(directory_name):
-    """
-    Sanitize a given directory name by replacing invalid characters with
-    underscores. Handles the invalid characters specific to Windows, macOS,
+
+def sanitize_directory_name(directory_name: str) -> str:
+    """Sanitize a given directory name by replacing invalid characters with underscores.
+
+    Handles the invalid characters specific to Windows, macOS,
     and Linux.
-
-    Args:
-        directory_name (str): The original directory name to sanitize.
-
-    Returns:
-        str: The sanitized directory name.
     """
     invalid_chars_dict = {
-        'nt': r'[\\/:*?"<>|]',  # Windows
-        'posix': r'[/:]'        # macOS and Linux
+        "nt": r'[\\/:*?"<>|]',  # Windows
+        "posix": r"[/:]",       # macOS and Linux
     }
     invalid_chars = invalid_chars_dict.get(os.name)
-    return re.sub(invalid_chars, '_', directory_name)
+    return re.sub(invalid_chars, "_", directory_name)
 
-def create_download_directory(directory_name):
-    """
-    Creates a directory for downloads if it doesn't exist.
 
-    Args:
-        directory_name (str): The name used to create the download directory.
-
-    Returns:
-        str: The path to the created download directory.
-
-    Raises:
-        OSError: If there is an error creating the directory.
-    """
+def create_download_directory(directory_name: str) -> str:
+    """Create a directory for downloads if it doesn't exist."""
     download_path = (
-        os.path.join(
-            DOWNLOAD_FOLDER,
-            sanitize_directory_name(directory_name)
-        )
-        if directory_name else DOWNLOAD_FOLDER
+        Path(DOWNLOAD_FOLDER) / sanitize_directory_name(directory_name)
+        if directory_name
+        else Path(DOWNLOAD_FOLDER)
     )
 
     try:
-        os.makedirs(download_path, exist_ok=True)
-        return download_path
+        download_path.mkdir(exist_ok=True)
+        return str(download_path)
 
-    except OSError as os_err:
-        print(f"Error creating directory: {os_err}")
+    except OSError:
+        logging.exception("Error creating 'Downloads' directory.")
         sys.exit(1)
 
-def clear_terminal():
-    """
-    Clears the terminal screen based on the operating system.
-    """
+
+def clear_terminal() -> None:
+    """Clear the terminal screen based on the operating system."""
     commands = {
-        'nt': 'cls',      # Windows
-        'posix': 'clear'  # macOS and Linux
+        "nt": "cls",       # Windows
+        "posix": "clear",  # macOS and Linux
     }
 
     command = commands.get(os.name)

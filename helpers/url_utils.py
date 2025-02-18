@@ -1,166 +1,102 @@
-"""
-This module provides functions to analyze and extract details from URLs related
-to albums and video files. The primary focus is on distinguishing between album
-URLs and individual video file URLs, and extracting relevant identifiers for 
+"""Analyze and extract details from URLs related to albums and video files.
+
+The primary focus is on distinguishing between album
+URLs and individual video file URLs, and extracting relevant identifiers for
 albums or videos.
 """
 
-import sys
+from __future__ import annotations
+
 import html
+import logging
+import sys
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-def get_host_page(url):
-    """
-    Extracts the base host URL from a given URL.
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
 
-    Args:
-        url (str): The full URL from which the host page should be extracted.
 
-    Returns:
-        str: The base URL, which consists of 'https://' followed by the network
-             location (domain) of the provided URL.
-    """
+def get_host_page(url: str) -> str:
+    """Extract the base host URL from a given URL."""
     url_netloc = urlparse(url).netloc
     return f"https://{url_netloc}"
 
-def check_url_type(url):
-    """
-    Determines whether the provided URL corresponds to an album or a single
-    video file.
 
-    Args:
-        url (str): The URL to check.
-
-    Returns:
-        bool: True if the URL is for an album, False if it is for a single
-              file.
-
-    Raises:
-        SystemExit: If the URL is invalid.
-        ValueError: If the URL format is incorrect.
-    """
-    url_mapping = {'a': True, 'f': False, 'v': False}
+def check_url_type(url: str) -> bool:
+    """Determine whether the provided URL corresponds to an album or a single file."""
+    url_mapping = {"a": True, "f": False, "v": False}
 
     try:
-        url_segment = url.split('/')[-2]
+        url_segment = url.split("/")[-2]
 
         if url_segment in url_mapping:
             return url_mapping[url_segment]
 
-        print("Enter a valid album or file URL.")
-        sys.exit(1)
+        logging.exception("Enter a valid album or file URL.")
 
-    except IndexError as indx_err:
-        raise ValueError("Invalid URL format.") from indx_err
+    except IndexError:
+        logging.exception("Invalid URL format.")
 
     return None
 
-def get_identifier(url):
-    """
-    Extracts individual item pages (URLs) from the parsed HTML content.
 
-    Args:
-        soup (BeautifulSoup): The parsed HTML content of the page.
+def get_identifier(url: str) -> str:
+    """Extract the identifier from the provided URL.
 
-    Returns:
-        list: A list of URLs pointing to individual item pages.
-
-    Raises:
-        AttributeError: If there is an error accessing the required HTML
-                        attributes (e.g., missing or malformed tags).
+    This function determines if the given URL corresponds to an album. If it is,
+    it returns the album ID. If not, it returns the last part of the URL (usually
+    the individual item identifier).
     """
     try:
         is_album = check_url_type(url)
-        return get_album_id(url) if is_album else url.split('/')[-1]
+        return get_album_id(url) if is_album else url.split("/")[-1]
 
-    except IndexError as indx_err:
-        print(f"Error extracting the identifier: {indx_err}")
+    except IndexError:
+        logging.exception("Error extracting the identifier.")
 
     return url
 
-def get_album_id(url):
-    """
-    Extracts the album or video ID from the provided URL.
 
-    Args:
-        url (str): The URL from which to the ID.
-
-    Returns:
-        str: The extracted ID.
-
-    Raises:
-        ValueError: If the URL format is incorrect.
-    """
+def get_album_id(url: str) -> str:
+    """Extract the album or video ID from the provided URL."""
     try:
-        return url.split('/')[-1]
+        return url.split("/")[-1]
 
-    except IndexError as indx_err:
-        raise ValueError("Invalid URL format.") from indx_err
+    except IndexError:
+        logging.exception("Invalid URL format.")
+        sys.exit(1)
 
-def get_album_name(soup):
-    """
-    Extracts the album name from a BeautifulSoup object representing the HTML
-    of a page. If the album name cannot be found, a message is printed, and
-    `None` is returned.
 
-    Args:
-        soup (BeautifulSoup): A BeautifulSoup object containing the HTML of the
-                              page.
+def get_album_name(soup: BeautifulSoup) -> str | None:
+    """Extract the album name from the HTML of a page.
 
-    Returns:
-        str or None: The extracted album name as a string, with any leading/
-                     trailing whitespace removed. If the album name is not
-                     found, returns `None`.
+    If the album name cannot be found, a message is printed, and `None` is returned.
     """
     name_container = soup.find(
-        'div',
-        {'class': "text-subs font-semibold flex text-base sm:text-lg"}
+        "div", {"class": "text-subs font-semibold flex text-base sm:text-lg"},
     )
 
     if name_container:
-        album_name = name_container.find('h1').get_text(strip=True)
+        album_name = name_container.find("h1").get_text(strip=True)
         return html.unescape(album_name)
 
-#    print(
-#        "Album name container not found; "
-#        "only the Album ID will be used for the directory name."
-#    )
     return None
 
-def get_item_type(item_page):
-    """
-    Extracts the type of item (album or single file) from the item page URL.
 
-    Args:
-        item_page (str): The item page URL.
-
-    Returns:
-        str: The type of item ('v', 'd', or 'f').
-
-    Raises:
-        AttributeError: If there is an error extracting the item type.
-    """
+def get_item_type(item_page: str) -> str:
+    """Extract the type of item (album or single file) from the item page URL."""
     try:
-        return item_page.split('/')[-2]
+        return item_page.split("/")[-2]
 
-    except AttributeError as attr_err:
-        print(f"Error extracting the item type: {attr_err}")
+    except AttributeError:
+        logging.exception("Error extracting the item type.")
 
     return None
 
-def get_url_based_filename(item_download_link):
-    """
-    Extracts the filename from a download link URL by removing any directory
-    structure.
 
-    Args:
-        item_download_link (str): The URL of the download link that contains
-                                  the filename in its path.
-
-    Returns:
-        str: The cleaned filename extracted from the URL, without any directory
-             structure.
-    """
+def get_url_based_filename(item_download_link: str) -> str:
+    """Extract the filename from a download link by removing any directory structure."""
     parsed_url = urlparse(item_download_link)
     # The download link path contains the filename, preceded by a '/'
-    return parsed_url.path.split('/')[-1]
+    return parsed_url.path.split("/")[-1]

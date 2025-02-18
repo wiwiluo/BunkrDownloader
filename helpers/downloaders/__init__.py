@@ -1,7 +1,6 @@
-"""
-The `downloaders` package provides utility modules and functions to support
-the main application. It includes tools for media crawling, URL handling,
-and other related tasks.
+"""Utility modules and functions to support the main application.
+
+It includes tools for media crawling, URL handling, and other related tasks.
 
 Modules:
     - album_downloader: Handles downloading of entire albums.
@@ -17,5 +16,5 @@ imported and integrated into various parts of the application.
 __all__ = [
     "album_downloader",
     "download_utils",
-    "media_downloader"
+    "media_downloader",
 ]

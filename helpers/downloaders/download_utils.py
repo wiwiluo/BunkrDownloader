@@ -1,24 +1,17 @@
-"""
-This module provides utilities for handling file downloads with progress
-tracking.
-"""
+"""Utilities for handling file downloads with progress tracking."""
 
-import os
+import logging
 import shutil
+from pathlib import Path
 
-KB = 1024
-MB = 1024 * KB
+from requests import Response
 
-def get_chunk_size(file_size):
-    """
-    Determines the optimal chunk size based on the file size.
+from helpers.config import KB, MB
+from helpers.managers.progress_manager import ProgressManager
 
-    Args:
-        file_size (int): The size of the file in bytes.
 
-    Returns:
-        int: The optimal chunk size in bytes.
-    """
+def get_chunk_size(file_size: int) -> int:
+    """Determine the optimal chunk size based on the file size."""
     thresholds = [
         (1 * MB, 16 * KB),     # Less than 1 MB
         (10 * MB, 64 * KB),    # 1 MB to 10 MB
@@ -33,33 +26,27 @@ def get_chunk_size(file_size):
 
     return 1 * MB
 
-def save_file_with_progress(response, download_path, task, progress_manager):
-    """
-    Saves the file from the response to the specified path while updating the
-    download progress. Adds a `.temp` extension if the download is partial.
+def save_file_with_progress(
+        response: Response,
+        download_path: str,
+        task: int,
+        progress_manager: ProgressManager,
+    ) -> bool:
+    """Save the file from the response to the specified path.
 
-    Args:
-        response (Response): The response object containing the file data.
-        download_path (str): The path where the file will be saved.
-        task (Task): The task object representing the current download task.
-        progress_manager (ProgressManager): An object responsible for managing
-                                            and updating task progress.
-
-    Raises:
-        ValueError: If the content length is not provided in the response
-                    headers.
+    Adds a `.temp` extension if the download is partial.
     """
     file_size = int(response.headers.get("content-length", -1))
     if file_size == -1:
-        raise ValueError("Content length not provided in response headers.")
+        logging.exception("Content length not provided in response headers.")
 
     # Create a temporary download path with the .temp extension
-    temp_download_path = os.path.splitext(download_path)[0] + ".temp"
+    temp_download_path = Path(download_path).with_suffix(".temp")
 
     chunk_size = get_chunk_size(file_size)
     total_downloaded = 0
 
-    with open(temp_download_path, 'wb') as file:
+    with temp_download_path.open("wb") as file:
         for chunk in response.iter_content(chunk_size=chunk_size):
             if chunk is not None:
                 file.write(chunk)
@@ -67,8 +54,7 @@ def save_file_with_progress(response, download_path, task, progress_manager):
                 completed = (total_downloaded / file_size) * 100
                 progress_manager.update_task(task, completed=completed)
 
-        # After download is complete, rename the temp file to the original
-        # filename
+        # After download is complete, rename the temp file to the original filename
         if total_downloaded == file_size:
             shutil.move(temp_download_path, download_path)
             # Return True if the download is incomplete
