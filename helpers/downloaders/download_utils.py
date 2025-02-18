@@ -3,6 +3,9 @@ This module provides utilities for handling file downloads with progress
 tracking.
 """
 
+import os
+import shutil
+
 KB = 1024
 MB = 1024 * KB
 
@@ -32,8 +35,8 @@ def get_chunk_size(file_size):
 
 def save_file_with_progress(response, download_path, task, progress_manager):
     """
-    Saves the file from the response to the specified path while updating
-    the download progress.
+    Saves the file from the response to the specified path while updating the
+    download progress. Adds a `.temp` extension if the download is partial.
 
     Args:
         response (Response): The response object containing the file data.
@@ -50,10 +53,13 @@ def save_file_with_progress(response, download_path, task, progress_manager):
     if file_size == -1:
         raise ValueError("Content length not provided in response headers.")
 
+    # Create a temporary download path with the .temp extension
+    temp_download_path = os.path.splitext(download_path)[0] + ".temp"
+
     chunk_size = get_chunk_size(file_size)
     total_downloaded = 0
 
-    with open(download_path, 'wb') as file:
+    with open(temp_download_path, 'wb') as file:
         for chunk in response.iter_content(chunk_size=chunk_size):
             if chunk is not None:
                 file.write(chunk)
@@ -61,5 +67,12 @@ def save_file_with_progress(response, download_path, task, progress_manager):
                 completed = (total_downloaded / file_size) * 100
                 progress_manager.update_task(task, completed=completed)
 
-        # Return True if the download is incomplete
-        return total_downloaded != file_size
+        # After download is complete, rename the temp file to the original
+        # filename
+        if total_downloaded == file_size:
+            shutil.move(temp_download_path, download_path)
+            # Return True if the download is incomplete
+            return False
+
+        # Return False if the download is incomplete
+        return True
