@@ -53,10 +53,11 @@ class LoggerTable:
     def render_log_panel(self):
         """Renders the log panel containing the log table."""
         log_table = self._render_table()
-        return Panel(
+        return Panel.fit(
             log_table,
             title=f"[bold {self.title_color}]Log Messages",
-            border_style=self.border_style
+            border_style=self.border_style,
+            width=80
         )
 
     # Private methods
