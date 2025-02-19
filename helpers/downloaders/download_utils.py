@@ -54,11 +54,11 @@ def save_file_with_progress(
                 completed = (total_downloaded / file_size) * 100
                 progress_manager.update_task(task, completed=completed)
 
-        # After download is complete, rename the temp file to the original filename
-        if total_downloaded == file_size:
-            shutil.move(temp_download_path, download_path)
-            # Return True if the download is incomplete
-            return False
+    # After download is complete, rename the temp file to the original filename
+    if total_downloaded == file_size:
+        shutil.move(temp_download_path, download_path)
+        # Return True if the download is incomplete
+        return False
 
-        # Return False if the download is incomplete
-        return True
+    # Return False if the download is incomplete
+    return True
