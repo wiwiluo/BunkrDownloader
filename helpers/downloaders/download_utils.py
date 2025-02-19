@@ -57,8 +57,7 @@ def save_file_with_progress(
     # After download is complete, rename the temp file to the original filename
     if total_downloaded == file_size:
         shutil.move(temp_download_path, download_path)
-        # Return True if the download is incomplete
         return False
 
-    # Return False if the download is incomplete
+    # Return True if the download is incomplete
     return True
