@@ -6,25 +6,18 @@ from pathlib import Path
 
 from requests import Response
 
-from helpers.config import KB, MB
+from helpers.config import LARGE_FILE_CHUNK_SIZE, THRESHOLDS
 from helpers.managers.progress_manager import ProgressManager
 
 
 def get_chunk_size(file_size: int) -> int:
     """Determine the optimal chunk size based on the file size."""
-    thresholds = [
-        (1 * MB, 16 * KB),     # Less than 1 MB
-        (10 * MB, 64 * KB),    # 1 MB to 10 MB
-        (50 * MB, 128 * KB),   # 10 MB to 50 MB
-        (100 * MB, 256 * KB),  # 50 MB to 100 MB
-        (250 * MB, 512 * KB),  # 100 MB to 250 MB
-    ]
-
-    for threshold, chunk_size in thresholds:
+    for threshold, chunk_size in THRESHOLDS:
         if file_size < threshold:
             return chunk_size
 
-    return 1 * MB
+    # Return a default chunk size for files larger than the largest threshold
+    return LARGE_FILE_CHUNK_SIZE
 
 def save_file_with_progress(
         response: Response,
