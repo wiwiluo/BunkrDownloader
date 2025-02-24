@@ -1,4 +1,4 @@
-"""Provides tools to manage the downloading of individual files from Bunkr URLs.
+"""Module that provides tools to manage the downloading of individual files from Bunkr.
 
 It supports retry mechanisms, progress tracking, and error handling for a robust
 download experience.
@@ -119,13 +119,14 @@ class MediaDownloader:
                 if partial_download:
                     self.handle_partial_download()
 
-                # Exit the loop if the download is successful
-                return False
-
             except RequestException as req_err:
                 # Exit the loop if not retrying
                 if not self.handle_request_exception(req_err, attempt):
                     break
+
+            else:
+                # Exit the loop if the download is successful
+                return False
 
         # Download failed
         return True
@@ -170,7 +171,7 @@ class MediaDownloader:
             )
             if attempt < self.retries - 1:
                 # Retry the request
-                delay = 4 ** (attempt + 1) + random.uniform(2, 4)
+                delay = 3 ** (attempt + 1) + random.uniform(0, 3)  # noqa: S311
                 time.sleep(delay)
                 return True
 
@@ -187,7 +188,7 @@ class MediaDownloader:
         self.live_manager.update_log("Request error", str(req_err))
         return False
 
-    def handle_failed_download(self, is_final_attempt: bool) -> dict | None:
+    def handle_failed_download(self, *, is_final_attempt: bool) -> dict | None:
         """Handle a failed download after all retry attempts."""
         if not is_final_attempt:
             self.live_manager.update_log(
@@ -237,6 +238,6 @@ class MediaDownloader:
 
         # Handle failed download after retries
         if failed_download:
-            return self.handle_failed_download(is_final_attempt)
+            return self.handle_failed_download(is_final_attempt=is_final_attempt)
 
         return None

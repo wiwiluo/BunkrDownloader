@@ -1,13 +1,14 @@
-"""Facilitates the downloading of entire Bunkr albums.
+"""Module that facilitates the downloading of entire Bunkr albums.
 
-Provides features for managing progress, handling failed downloads, and integrating with
-live task displays.
+This module provides features for managing progress, handling failed downloads, and
+integrating with live task displays.
 """
 
 import asyncio
 from argparse import Namespace
 from asyncio import Semaphore
 
+from helpers.config import MAX_WORKERS
 from helpers.crawlers.crawler_utils import get_download_info
 from helpers.general_utils import fetch_page
 from helpers.managers.live_manager import LiveManager
@@ -85,7 +86,7 @@ class AlbumDownloader:
             )
         self.failed_downloads.clear()
 
-    async def download_album(self, max_workers: int = 5) -> None:
+    async def download_album(self, max_workers: int = MAX_WORKERS) -> None:
         """Handle the album download."""
         num_tasks = len(self.item_pages)
         self.live_manager.add_overall_task(

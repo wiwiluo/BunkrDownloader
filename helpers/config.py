@@ -11,6 +11,8 @@ DOWNLOAD_FOLDER = "Downloads"             # The folder where downloaded files
 FILE = "URLs.txt"                         # The name of the file containing the
                                           # list of URLs to process.
 SESSION_LOG = "session_log.txt"           # The file used to log errors.
+MAX_WORKERS = 4                           # The maximum number of threads for
+                                          # concurrent downloads.
 
 # Constants for file sizes, expressed in bytes.
 KB = 1024
