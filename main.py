@@ -8,8 +8,10 @@ Usage:
     listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
+import argparse
 import asyncio
 import sys
+from argparse import Namespace
 
 from downloader import initialize_managers, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
@@ -18,17 +20,37 @@ from helpers.file_utils import read_file, write_file
 from helpers.general_utils import clear_terminal
 
 
-async def process_urls(urls: list[str]) -> None:
+def parse_arguments() -> Namespace:
+    """Parse only the --disable-ui argument."""
+    parser = argparse.ArgumentParser(description="Acquire URL and other arguments.")
+
+    # Define only the --disable-ui argument
+    parser.add_argument(
+        "--disable-ui",
+        action="store_true",
+        help="Disable the user interface",
+    )
+
+    # Use parse_known_args to only parse known arguments
+    return parser.parse_args()
+
+
+async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
     """Validate and downloads items for a list of URLs."""
     bunkr_status = get_bunkr_status()
-    live_manager = initialize_managers()
+    live_manager = initialize_managers(disable_ui=disable_ui)
 
     try:
-        with live_manager.live:
+        if not disable_ui:
+            with live_manager.live:
+                for url in urls:
+                    await validate_and_download(bunkr_status, url, live_manager)
+
+        else:
             for url in urls:
                 await validate_and_download(bunkr_status, url, live_manager)
 
-            live_manager.stop()
+        live_manager.stop()
 
     except KeyboardInterrupt:
         sys.exit(1)
@@ -40,9 +62,12 @@ async def main() -> None:
     clear_terminal()
     write_file(SESSION_LOG)
 
+    # Parse arguments to get disable_ui flag
+    args = parse_arguments()
+
     # Read and process URLs
     urls = read_file(FILE)
-    await process_urls(urls)
+    await process_urls(urls, disable_ui=args.disable_ui)
 
     # Clear URLs file
     write_file(FILE)

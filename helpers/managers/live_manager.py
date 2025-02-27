@@ -30,16 +30,22 @@ class LiveManager:
         self,
         progress_manager: ProgressManager,
         logger: LoggerTable,
+        *,
+        disable_ui: bool = False,
         refresh_per_second: int = 10,
     ) -> None:
         """Initialize the progress manager and logger, and set up the live view."""
         self.progress_manager = progress_manager
         self.progress_table = self.progress_manager.create_progress_table()
         self.logger = logger
-        self.live = Live(
-            self._render_live_view(),
-            refresh_per_second=refresh_per_second,
-        )
+        self.disable_ui = disable_ui
+
+        self.live = None
+        if not self.disable_ui:
+            self.live = Live(
+                self._render_live_view(),
+                refresh_per_second=refresh_per_second,
+            )
 
         self.start_time = time.time()
         self.update_log("Script started", "The script has started execution.")
@@ -65,12 +71,15 @@ class LiveManager:
 
     def update_log(self, event: str, details: str) -> None:
         """Log an event and refreshes the live display."""
-        self.logger.log(event, details)
-        self.live.update(self._render_live_view())
+        self.logger.log(event, details, disable_ui=self.disable_ui)
+
+        if not self.disable_ui:
+            self.live.update(self._render_live_view())
 
     def start(self) -> None:
         """Start the live display."""
-        self.live.start()
+        if not self.disable_ui:
+            self.live.start()
 
     def stop(self) -> None:
         """Stop the live display and log the execution time."""
@@ -81,7 +90,9 @@ class LiveManager:
             "Script ended",
             f"The script has finished execution. Execution time: {execution_time}",
         )
-        self.live.stop()
+
+        if not self.disable_ui:
+            self.live.stop()
 
     # Private methods
     def _render_live_view(self) -> Group:

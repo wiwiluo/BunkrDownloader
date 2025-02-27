@@ -10,12 +10,15 @@ This module can be integrated into a live display using the `rich.live.Live` and
 indicators.
 """
 
+import logging
 from collections import deque
 from datetime import datetime, timezone
 
 from rich.box import SIMPLE
 from rich.panel import Panel
 from rich.table import Table
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 class LoggerTable:
@@ -36,10 +39,16 @@ class LoggerTable:
         self.border_style = border_style
         self.table = self._create_table()
 
-    def log(self, event: str, details: str) -> None:
+    def log(self, event: str, details: str, *, disable_ui: bool = False) -> None:
         """Add a new row to the table and manage scrolling."""
         timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
-        self.row_buffer.append((timestamp, event, details))
+
+        if not disable_ui:
+            self.row_buffer.append((timestamp, event, details))
+
+        else:
+            log_message = f"[{timestamp}] Event: {event} | Details: {details}"
+            logging.info(log_message)
 
     def render_log_panel(self) -> Panel:
         """Render the log panel containing the log table."""

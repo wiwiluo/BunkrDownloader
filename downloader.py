@@ -105,11 +105,14 @@ async def validate_and_download(
         raise RuntimeError(error_message) from err
 
 
-def initialize_managers() -> LiveManager:
+def initialize_managers(*, disable_ui: bool = False) -> LiveManager:
     """Initialize and return the managers for progress tracking and logging."""
-    progress_manager = ProgressManager(task_name="Album", item_description="File")
+    progress_manager = ProgressManager(
+        task_name="Album",
+        item_description="File",
+    )
     logger_table = LoggerTable()
-    return LiveManager(progress_manager, logger_table)
+    return LiveManager(progress_manager, logger_table, disable_ui=disable_ui)
 
 
 def parse_arguments() -> Namespace:
@@ -132,6 +135,11 @@ def parse_arguments() -> Namespace:
         "Files containing any of these substrings "
         "in their names will be downloaded.",
     )
+    parser.add_argument(
+        "--disable-ui",
+        action="store_true",
+        help="Disable the user interface",
+    )
     return parser.parse_args()
 
 
@@ -139,13 +147,22 @@ async def main() -> None:
     """Initialize the download process."""
     clear_terminal()
     bunkr_status = get_bunkr_status()
-    live_manager = initialize_managers()
     args = parse_arguments()
+    live_manager = initialize_managers(disable_ui=args.disable_ui)
 
     try:
-        with live_manager.live:
+        if not args.disable_ui:
+            with live_manager.live:
+                await validate_and_download(
+                    bunkr_status,
+                    args.url,
+                    live_manager,
+                    args=args,
+                )
+        else:
             await validate_and_download(bunkr_status, args.url, live_manager, args=args)
-            live_manager.stop()
+
+        live_manager.stop()
 
     except KeyboardInterrupt:
         sys.exit(1)
