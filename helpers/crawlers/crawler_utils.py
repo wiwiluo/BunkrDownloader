@@ -1,15 +1,22 @@
 """Module for extracting media download links from item pages."""
+
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from helpers.config import SLUG_REGEX
 from helpers.general_utils import (
     fetch_page,
-    validate_download_link,
+    # validate_download_link,
 )
-from helpers.url_utils import get_url_based_filename
+from helpers.url_utils import (
+    decrypt_encrypted_url,
+    get_encryption_data,
+    get_url_based_filename,
+)
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -36,6 +43,7 @@ def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str]:
 
     return []
 
+
 def get_item_container(item_soup: BeautifulSoup) -> BeautifulSoup | None:
     """Extract the first available image or source container."""
     # Try to find the <source> element
@@ -54,6 +62,7 @@ def get_item_container(item_soup: BeautifulSoup) -> BeautifulSoup | None:
     # Return the found element (either <source>, <img>, or None if neither was
     # found)
     return item_container
+
 
 async def get_non_media_download_link(item_soup: BeautifulSoup) -> str:
     """Extract the download link for a non-media item."""
@@ -87,27 +96,13 @@ async def get_non_media_download_link(item_soup: BeautifulSoup) -> str:
     # Return the download link extraced from the 'href' attribute
     return non_media_download_container["href"]
 
-async def get_item_download_link(item_soup: BeautifulSoup) -> str:
+
+async def get_item_download_link(item_url: str) -> str:
     """Retrieve the download link for a specific item from its HTML content."""
-    item_container = get_item_container(item_soup)
+    slug = re.search(SLUG_REGEX, item_url).group(1)
+    encription_data = get_encryption_data(slug)
+    return decrypt_encrypted_url(encription_data)
 
-    if item_container is None:
-        return await get_non_media_download_link(item_soup)
-
-    try:
-        download_link = item_container["src"]
-
-        if validate_download_link(download_link):
-            return download_link
-
-        # If the standard download link is unavailable, extract the download link as a
-        # non-media file.
-        return await get_non_media_download_link(item_soup)
-
-    except AttributeError:
-        logging.exception("Error extracting source.")
-
-    return None
 
 def get_item_filename(item_soup: BeautifulSoup) -> str:
     """Extract the filename from the provided HTML soup."""
@@ -116,6 +111,7 @@ def get_item_filename(item_soup: BeautifulSoup) -> str:
         {"class": "text-subs font-semibold text-base sm:text-lg truncate"},
     )
     return item_filename_container.get_text()
+
 
 def format_item_filename(original_filename: str, url_based_filename: str) -> str:
     """Combine two filenames while preserving the extension of the first.
@@ -138,14 +134,14 @@ def format_item_filename(original_filename: str, url_based_filename: str) -> str
     # Combine the base names with a hyphen and append the extension
     return f"{original_base}-{url_base}{extension}"
 
-async def get_download_info(item_soup: BeautifulSoup) -> tuple:
+
+async def get_download_info(item_url: str, item_soup: BeautifulSoup) -> tuple:
     """Gather download information (link and filename) for the item."""
-    item_download_link = await get_item_download_link(item_soup)
+    item_download_link = await get_item_download_link(item_url)
 
     item_filename = get_item_filename(item_soup)
     url_based_filename = (
-        get_url_based_filename(item_download_link) if item_download_link
-        else None
+        get_url_based_filename(item_download_link) if item_download_link else None
     )
     formatted_item_filename = format_item_filename(
         item_filename,

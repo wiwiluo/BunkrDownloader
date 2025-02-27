@@ -14,6 +14,7 @@ def read_file(filename: str) -> list[str]:
     with Path(filename).open(encoding="utf-8") as file:
         return file.read().splitlines()
 
+
 def write_file(filename: str, content: str = "") -> None:
     """Write content to a specified file.
 
@@ -21,6 +22,7 @@ def write_file(filename: str, content: str = "") -> None:
     """
     with Path(filename).open("w", encoding="utf-8") as file:
         file.write(content)
+
 
 def write_on_session_log(content: str) -> None:
     """Append content to the session log file."""

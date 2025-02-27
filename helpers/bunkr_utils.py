@@ -1,4 +1,5 @@
 """Utilities to fetch the operational status of servers from the Bunkr status page."""
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +22,7 @@ def fetch_page(url: str) -> BeautifulSoup | None:
         logging.exception("Error occurred while making the request.")
         return None
 
+
 def get_bunkr_status() -> dict:
     """Fetch the status of servers from the status page and returns a dictionary."""
     soup = fetch_page(STATUS_PAGE)
@@ -30,8 +32,7 @@ def get_bunkr_status() -> dict:
             "div",
             {
                 "class": (
-                    "flex items-center gap-4 py-4 border-b border-soft "
-                    "last:border-b-0"
+                    "flex items-center gap-4 py-4 border-b border-soft last:border-b-0"
                 ),
             },
         )
@@ -48,13 +49,14 @@ def get_bunkr_status() -> dict:
 
     return bunkr_status
 
+
 def get_offline_servers(bunkr_status: dict | None = None) -> dict:
     """Return a dictionary of servers that are not operational."""
     bunkr_status = bunkr_status or get_bunkr_status()
     return {
-        name: status
-        for name, status in bunkr_status.items() if status != "Operational"
+        name: status for name, status in bunkr_status.items() if status != "Operational"
     }
+
 
 def subdomain_is_offline(download_link: str, bunkr_status: dict | None = None) -> bool:
     """Check if the subdomain from the given download link is marked as offline."""
@@ -64,6 +66,7 @@ def subdomain_is_offline(download_link: str, bunkr_status: dict | None = None) -
     subdomain = netloc.split(".")[0].capitalize()
 
     return subdomain in offline_servers
+
 
 def mark_subdomain_as_offline(bunkr_status: dict, download_link: str) -> str:
     """Mark the subdomain of a given download link as offline in the Bunkr status."""

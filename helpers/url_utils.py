@@ -1,8 +1,7 @@
-"""Analyze and extract details from URLs related to albums and video files.
+"""Module to analyze and extract details from URLs related to albums and video files.
 
-The primary focus is on distinguishing between album
-URLs and individual video file URLs, and extracting relevant identifiers for
-albums or videos.
+The primary focus is on distinguishing between album URLs and individual file URLs, and
+extracting relevant identifiers for albums or videos.
 """
 
 from __future__ import annotations
@@ -10,8 +9,14 @@ from __future__ import annotations
 import html
 import logging
 import sys
+from base64 import b64decode
+from math import floor
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
+
+import requests
+
+from .config import BUNKR_API, HTTP_STATUS_OK
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -74,7 +79,8 @@ def get_album_name(soup: BeautifulSoup) -> str | None:
     If the album name cannot be found, a message is printed, and `None` is returned.
     """
     name_container = soup.find(
-        "div", {"class": "text-subs font-semibold flex text-base sm:text-lg"},
+        "div",
+        {"class": "text-subs font-semibold flex text-base sm:text-lg"},
     )
 
     if name_container:
@@ -100,3 +106,45 @@ def get_url_based_filename(item_download_link: str) -> str:
     parsed_url = urlparse(item_download_link)
     # The download link path contains the filename, preceded by a '/'
     return parsed_url.path.split("/")[-1]
+
+
+def get_encryption_data(slug: str) -> dict | None:
+    """Fetch encryption data for a given slug from the Bunkr API."""
+    try:
+        with requests.Session() as session:
+            response = session.post(BUNKR_API, json={"slug": slug})
+            if response.status_code != HTTP_STATUS_OK:
+                log_message = (
+                    f"Failed to fetch encryption data for slug '{slug}' "
+                    f"(status: {response.status_code})"
+                )
+                logging.warning(log_message)
+                return None
+
+        return response.json()
+
+    except requests.RequestException as req_err:
+        log_message = (
+            f"Error while requesting encryption data for slug '{slug}': {req_err}"
+        )
+        logging.exception(log_message)
+        return None
+
+
+def decrypt_encrypted_url(encryption_data: dict) -> str:
+    """Decrypt an encrypted URL using a time-based secret key."""
+    try:
+        timestamp = encryption_data["timestamp"]
+        encrypted_bytes = b64decode(encryption_data["url"])
+
+    except KeyError as key_err:
+        log_message = f"Missing required encryption data field: {key_err}"
+        logging.exception(log_message)
+
+    secret_key = f"SECRET_KEY_{floor(timestamp / 3600)}"
+    secret_key_bytes = secret_key.encode("utf-8")
+
+    return "".join(
+        chr(byte ^ secret_key_bytes[indx % len(secret_key_bytes)])
+        for indx, byte in enumerate(encrypted_bytes)
+    )

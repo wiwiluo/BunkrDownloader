@@ -1,4 +1,4 @@
-"""Provide functionality to read URLs from a file, and download from them.
+"""Module that provides functionality to read URLs from a file, and download from them.
 
 This module manages the entire download process by leveraging asynchronous
 operations, allowing for efficient handling of multiple URLs.

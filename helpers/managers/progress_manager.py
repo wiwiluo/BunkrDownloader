@@ -1,9 +1,9 @@
 """Provide a `ProgressManager` class for tracking and displaying the progress of tasks.
 
-It uses the Rich
-library to create dynamic, formatted progress bars and tables for monitoring
-task completion.
+It uses the Rich library to create dynamic, formatted progress bars and tables for
+monitoring task completion.
 """
+
 from __future__ import annotations
 
 from collections import deque
@@ -53,18 +53,18 @@ class ProgressManager:
     def add_task(self, current_task: int = 0, total: int = 100) -> int:
         """Add an individual task to the task progress bar."""
         task_description = (
-            f"[{self.color}]{self.item_description} "
-            f"{current_task + 1}/{self.num_tasks}"
+            f"[{self.color}]{self.item_description} {current_task + 1}/{self.num_tasks}"
         )
         return self.task_progress.add_task(task_description, total=total)
 
     def update_task(
-            self,
-            task_id: int,
-            completed: int | None = None,
-            advance: int = 0,
-            visible: bool = True,
-        ) -> None:
+        self,
+        task_id: int,
+        completed: int | None = None,
+        advance: int = 0,
+        *,
+        visible: bool = True,
+    ) -> None:
         """Update the progress of an individual task and the overall progress."""
         self.task_progress.update(
             task_id,
@@ -124,7 +124,8 @@ class ProgressManager:
     def _adjust_description(description: str, max_length: int = 8) -> str:
         """Truncate a string to a specified maximum length adding an ellipsis."""
         return (
-            description[:max_length] + "..." if len(description) > max_length
+            description[:max_length] + "..."
+            if len(description) > max_length
             else description
         )
 

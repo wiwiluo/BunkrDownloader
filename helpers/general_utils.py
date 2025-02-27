@@ -4,6 +4,7 @@ It includes functions to handle common tasks such as sending HTTP requests,
 parsing HTML, creating download directories, and clearing the terminal, making it
 reusable across projects.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +66,7 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
             logging.exception("Remote end closed connection without response.")
             if attempt < retries - 1:
                 # Add jitter to avoid a retry storm
-                delay = 2 ** (attempt + 1) + random.uniform(0, 2)
+                delay = 2 ** (attempt + 1) + random.uniform(0, 2)  # noqa: S311
                 asyncio.sleep(delay)
 
         except requests.RequestException as req_err:
@@ -90,8 +91,7 @@ def format_directory_name(directory_name: str, directory_id: int | None) -> str 
 def sanitize_directory_name(directory_name: str) -> str:
     """Sanitize a given directory name by replacing invalid characters with underscores.
 
-    Handles the invalid characters specific to Windows, macOS,
-    and Linux.
+    Handles the invalid characters specific to Windows, macOS, and Linux.
     """
     invalid_chars_dict = {
         "nt": r'[\\/:*?"<>|]',  # Windows
@@ -127,4 +127,4 @@ def clear_terminal() -> None:
 
     command = commands.get(os.name)
     if command:
-        os.system(command)
+        os.system(command)  # noqa: S605

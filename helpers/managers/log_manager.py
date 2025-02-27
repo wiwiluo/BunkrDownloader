@@ -1,13 +1,13 @@
-"""Provides logging functionality with a table display for events and their details.
+"""Module that provides a logging table display for events and their details.
 
-The `LoggerTable` class maintains a circular buffer of events and renders them
-in a table format with scrolling rows. It allows you to log events with
-timestamps and view them in a styled table. The table supports customization of
-the number of rows to display and the style of the borders and headers.
+The `LoggerTable` class maintains a circular buffer of events and renders them in a
+table format with scrolling rows. It allows you to log events with timestamps and view
+them in a styled table. The table supports customization of the number of rows to
+display and the style of the borders and headers.
 
-This module can be integrated into a live display using the `rich.live.Live`
-and `rich.console.Group` to combine the logger table with other content,
-like progress indicators.
+This module can be integrated into a live display using the `rich.live.Live` and
+`rich.console.Group` to combine the logger table with other content, like progress
+indicators.
 """
 
 from collections import deque
@@ -55,20 +55,26 @@ class LoggerTable:
     def _create_table(self) -> Table:
         """Create and return a new table with the necessary columns and styles."""
         new_table = Table(
-            box=SIMPLE,                    # Box style for the table
-            show_header=True,              # Show the table column names
-            show_edge=True,                # Display edges around the table
-            show_lines=False,              # Do not display grid lines
+            box=SIMPLE,                     # Box style for the table
+            show_header=True,               # Show the table column names
+            show_edge=True,                 # Display edges around the table
+            show_lines=False,               # Do not display grid lines
             border_style=self.title_color,  # Set the color of the box
         )
         new_table.add_column(
-            f"[{self.title_color}]Timestamp", style="pale_turquoise4", width=15,
+            f"[{self.title_color}]Timestamp",
+            style="pale_turquoise4",
+            width=15,
         )
         new_table.add_column(
-            f"[{self.title_color}]Event", style="pale_turquoise1", width=20,
+            f"[{self.title_color}]Event",
+            style="pale_turquoise1",
+            width=20,
         )
         new_table.add_column(
-            f"[{self.title_color}]Details", style="pale_turquoise4", width=45,
+            f"[{self.title_color}]Details",
+            style="pale_turquoise4",
+            width=45,
         )
         return new_table
 

@@ -19,17 +19,18 @@ def get_chunk_size(file_size: int) -> int:
     # Return a default chunk size for files larger than the largest threshold
     return LARGE_FILE_CHUNK_SIZE
 
+
 def save_file_with_progress(
-        response: Response,
-        download_path: str,
-        task: int,
-        progress_manager: ProgressManager,
-    ) -> bool:
+    response: Response,
+    download_path: str,
+    task: int,
+    progress_manager: ProgressManager,
+) -> bool:
     """Save the file from the response to the specified path.
 
     Adds a `.temp` extension if the download is partial.
     """
-    file_size = int(response.headers.get("content-length", -1))
+    file_size = int(response.headers.get("Content-Length", -1))
     if file_size == -1:
         logging.exception("Content length not provided in response headers.")
 

@@ -20,12 +20,12 @@ class AlbumDownloader:
     """Manage the downloading of entire Bunkr albums."""
 
     def __init__(
-            self,
-            session_info: tuple,
-            album_info: tuple,
-            live_manager: LiveManager,
-            args: Namespace,
-        ) -> None:
+        self,
+        session_info: tuple,
+        album_info: tuple,
+        live_manager: LiveManager,
+        args: Namespace,
+    ) -> None:
         """Initialize the AlbumDownloader instance."""
         self.bunkr_status, self.download_path = session_info
         self.album_id, self.item_pages = album_info
@@ -34,11 +34,11 @@ class AlbumDownloader:
         self.args = args
 
     async def execute_item_download(
-            self,
-            item_page: str,
-            current_task: int,
-            semaphore: Semaphore,
-        ) -> None:
+        self,
+        item_page: str,
+        current_task: int,
+        semaphore: Semaphore,
+    ) -> None:
         """Handle the download of an individual item in the album."""
         async with semaphore:
             task = self.live_manager.add_task(current_task=current_task)
@@ -48,7 +48,7 @@ class AlbumDownloader:
             (
                 item_download_link,
                 item_file_name,
-            ) = await get_download_info(item_soup)
+            ) = await get_download_info(item_page, item_soup)
 
             # Download item
             if item_download_link:
@@ -64,8 +64,11 @@ class AlbumDownloader:
                     self.failed_downloads.append(failed_download)
 
     async def retry_failed_download(
-            self, task: int, file_name: str, download_link: str,
-        ) -> None:
+        self,
+        task: int,
+        file_name: str,
+        download_link: str,
+    ) -> None:
         """Handle failed downloads and retries them."""
         downloader = MediaDownloader(
             session_info=(self.bunkr_status, self.download_path),

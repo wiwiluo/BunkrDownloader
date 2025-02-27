@@ -64,7 +64,7 @@ async def handle_download_process(
         await album_downloader.download_album()
 
     else:
-        download_link, file_name = await get_download_info(soup)
+        download_link, file_name = await get_download_info(url, soup)
         live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
@@ -77,10 +77,10 @@ async def handle_download_process(
 
 
 async def validate_and_download(
-        bunkr_status: dict,
-        url: str,
-        live_manager: LiveManager,
-        args: Namespace | None = None,
+    bunkr_status: dict,
+    url: str,
+    live_manager: LiveManager,
+    args: Namespace | None = None,
 ) -> None:
     """Validate the provided URL, and initiate the download process."""
     soup = await fetch_page(url)
@@ -93,7 +93,11 @@ async def validate_and_download(
 
     try:
         await handle_download_process(
-            bunkr_status, (url, soup), download_path, live_manager, args=args,
+            bunkr_status,
+            (url, soup),
+            download_path,
+            live_manager,
+            args=args,
         )
 
     except (RequestConnectionError, Timeout, RequestException) as err:

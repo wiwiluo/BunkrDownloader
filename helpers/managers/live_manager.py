@@ -1,9 +1,10 @@
-"""Provide functionality for managing and displaying live updates in the terminal.
+"""Module that provides functionality for managing and displaying live updates.
 
 It combines a progress table and a logger table into a real-time display, allowing
 dynamic updates of both tables. The `LiveManager` class handles the integration and
 refresh of the live view.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -21,16 +22,16 @@ if TYPE_CHECKING:
 class LiveManager:
     """Manage a live display that combines a progress table and a logger table.
 
-    It allows for real-time updates and refreshes of both
-    progress and logs in a terminal.
+    It allows for real-time updates and refreshes of both progress and logs in a
+    terminal.
     """
 
     def __init__(
-            self,
-            progress_manager: ProgressManager,
-            logger: LoggerTable,
-            refresh_per_second: int = 10,
-        ) -> None:
+        self,
+        progress_manager: ProgressManager,
+        logger: LoggerTable,
+        refresh_per_second: int = 10,
+    ) -> None:
         """Initialize the progress manager and logger, and set up the live view."""
         self.progress_manager = progress_manager
         self.progress_table = self.progress_manager.create_progress_table()
@@ -52,13 +53,15 @@ class LiveManager:
         return self.progress_manager.add_task(current_task, total)
 
     def update_task(
-            self, task_id: int,
-            completed: int | None = None,
-            advance: int = 0,
-            visible: bool = True,
-        ) -> None:
+        self,
+        task_id: int,
+        completed: int | None = None,
+        advance: int = 0,
+        *,
+        visible: bool = True,
+    ) -> None:
         """Call ProgressManager to update an individual task."""
-        self.progress_manager.update_task(task_id, completed, advance, visible)
+        self.progress_manager.update_task(task_id, completed, advance, visible=visible)
 
     def update_log(self, event: str, details: str) -> None:
         """Log an event and refreshes the live display."""
@@ -76,8 +79,7 @@ class LiveManager:
         # Log the execution time in hh:mm:ss format
         self.update_log(
             "Script ended",
-            f"The script has finished execution. "
-            f"Execution time: {execution_time}",
+            f"The script has finished execution. Execution time: {execution_time}",
         )
         self.live.stop()
 

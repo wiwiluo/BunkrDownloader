@@ -6,6 +6,9 @@ into a single location.
 
 STATUS_PAGE = "https://status.bunkr.ru/"  # The URL of the status page for
                                           # checking service availability.
+BUNKR_API = "https://bunkr.cr/api/vs"     # The API for retrieving encryption data.
+SLUG_REGEX = r"\/f\/(.*?)$"               # Regular expression to extract the slug from
+                                          # a URL.
 DOWNLOAD_FOLDER = "Downloads"             # The folder where downloaded files
                                           # will be stored.
 FILE = "URLs.txt"                         # The name of the file containing the
@@ -35,14 +38,15 @@ THRESHOLDS = [
 LARGE_FILE_CHUNK_SIZE = 16 * MB
 
 # HTTP status codes.
+HTTP_STATUS_OK = 200
 HTTP_STATUS_BAD_GATEWAY = 502
 HTTP_STATUS_SERVER_DOWN = 521
 
 # Headers used for general HTTP requests.
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) "
-        "Gecko/20100101 Firefox/117.0"
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:135.0) "
+        "Gecko/20100101 Firefox/135.0"
     ),
 }
 
