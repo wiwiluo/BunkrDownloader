@@ -8,13 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from helpers.config import SLUG_REGEX
-from helpers.general_utils import (
-    fetch_page,
-    # validate_download_link,
-)
+from helpers.general_utils import fetch_page
 from helpers.url_utils import (
-    decrypt_encrypted_url,
-    get_encryption_data,
+    decrypt_url,
+    get_api_response,
     get_url_based_filename,
 )
 
@@ -100,8 +97,8 @@ async def get_non_media_download_link(item_soup: BeautifulSoup) -> str:
 async def get_item_download_link(item_url: str) -> str:
     """Retrieve the download link for a specific item from its HTML content."""
     slug = re.search(SLUG_REGEX, item_url).group(1)
-    encription_data = get_encryption_data(slug)
-    return decrypt_encrypted_url(encription_data)
+    api_response = get_api_response(slug)
+    return decrypt_url(api_response)
 
 
 def get_item_filename(item_soup: BeautifulSoup) -> str:
