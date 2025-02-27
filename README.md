@@ -150,6 +150,26 @@ python3 main.py
 
 3. The downloaded files will be saved in the `Downloads` directory.
 
+## Disable UI for Notebooks
+
+When the script is executed in a notebook environment (such as Jupyter), excessive output may lead to performance issues or crashes.
+
+### Usage
+
+You can run the script with the `--disable-ui` argument to disable the progress bar and minimize log messages.
+
+To disable the UI, use the following command:
+
+```
+python3 main.py --disable-ui
+```
+
+To download a single file or album without the UI, you can use this command:
+
+```
+python3 downloader.py <bunkr_url> --disable-ui
+```
+
 ## Logging
 
 The application logs any issues encountered during the download process in a file named `session_log.txt`. Check this file for any URLs that may have been blocked or had errors.
