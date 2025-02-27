@@ -10,6 +10,7 @@ import html
 import logging
 import sys
 from base64 import b64decode
+from itertools import cycle
 from math import floor
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -108,8 +109,10 @@ def get_url_based_filename(item_download_link: str) -> str:
     return parsed_url.path.split("/")[-1]
 
 
-def get_api_response(slug: str) -> dict | None:
+def get_api_response(item_url: str) -> dict | None:
     """Fetch encryption data for a given slug from the Bunkr API."""
+    slug = get_identifier(item_url)
+
     try:
         with requests.Session() as session:
             response = session.post(BUNKR_API, json={"slug": slug})
@@ -142,11 +145,14 @@ def decrypt_url(api_response: dict) -> str:
         log_message = f"Missing required encryption data field: {key_err}"
         logging.exception(log_message)
 
+    # Generate the secret key based on the timestamp
     time_key = floor(timestamp / 3600)
     secret_key = f"SECRET_KEY_{time_key}"
     secret_key_bytes = secret_key.encode("utf-8")
 
-    return "".join(
-        chr(byte ^ secret_key_bytes[indx % len(secret_key_bytes)])
-        for indx, byte in enumerate(encrypted_bytes)
-    )
+    # Create a cyclic iterator for the secret key
+    cycled_key = cycle(secret_key_bytes)
+
+    # Decrypt the data byte by byte using XOR
+    decrypted_data = [chr(byte ^ next(cycled_key)) for byte in encrypted_bytes]
+    return "".join(decrypted_data)

@@ -4,18 +4,16 @@ These configurations aim to improve modularity and readability by consolidating 
 into a single location.
 """
 
-STATUS_PAGE = "https://status.bunkr.ru/"  # The URL of the status page for
-                                          # checking service availability.
-BUNKR_API = "https://bunkr.cr/api/vs"     # The API for retrieving encryption data.
-SLUG_REGEX = r"\/f\/(.*?)$"               # Regular expression to extract the slug from
-                                          # a URL.
-DOWNLOAD_FOLDER = "Downloads"             # The folder where downloaded files
-                                          # will be stored.
-FILE = "URLs.txt"                         # The name of the file containing the
-                                          # list of URLs to process.
-SESSION_LOG = "session_log.txt"           # The file used to log errors.
-MAX_WORKERS = 4                           # The maximum number of threads for
-                                          # concurrent downloads.
+STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for
+                                            # checking service availability.
+BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
+DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
+                                            # will be stored.
+FILE = "URLs.txt"                           # The name of the file containing the
+                                            # list of URLs to process.
+SESSION_LOG = "session_log.txt"             # The file used to log errors.
+MAX_WORKERS = 4                             # The maximum number of threads for
+                                            # concurrent downloads.
 
 # Constants for file sizes, expressed in bytes.
 KB = 1024

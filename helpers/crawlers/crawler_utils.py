@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from helpers.config import SLUG_REGEX
 from helpers.general_utils import fetch_page
 from helpers.url_utils import (
     decrypt_url,
@@ -96,8 +94,7 @@ async def get_non_media_download_link(item_soup: BeautifulSoup) -> str:
 
 async def get_item_download_link(item_url: str) -> str:
     """Retrieve the download link for a specific item from its HTML content."""
-    slug = re.search(SLUG_REGEX, item_url).group(1)
-    api_response = get_api_response(slug)
+    api_response = get_api_response(item_url)
     return decrypt_url(api_response)
 
 
