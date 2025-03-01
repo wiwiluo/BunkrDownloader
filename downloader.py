@@ -151,18 +151,14 @@ async def main() -> None:
     live_manager = initialize_managers(disable_ui=args.disable_ui)
 
     try:
-        if not args.disable_ui:
-            with live_manager.live:
-                await validate_and_download(
-                    bunkr_status,
-                    args.url,
-                    live_manager,
-                    args=args,
-                )
-        else:
-            await validate_and_download(bunkr_status, args.url, live_manager, args=args)
-
-        live_manager.stop()
+        with live_manager.live:
+            await validate_and_download(
+                bunkr_status,
+                args.url,
+                live_manager,
+                args=args,
+            )
+            live_manager.stop()
 
     except KeyboardInterrupt:
         sys.exit(1)

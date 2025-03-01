@@ -41,16 +41,10 @@ async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
     live_manager = initialize_managers(disable_ui=disable_ui)
 
     try:
-        if not disable_ui:
-            with live_manager.live:
-                for url in urls:
-                    await validate_and_download(bunkr_status, url, live_manager)
-
-        else:
+        with live_manager.live:
             for url in urls:
                 await validate_and_download(bunkr_status, url, live_manager)
-
-        live_manager.stop()
+            live_manager.stop()
 
     except KeyboardInterrupt:
         sys.exit(1)
