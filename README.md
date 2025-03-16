@@ -19,7 +19,7 @@
 - Python 3
 - `BeautifulSoup` (bs4) - for HTML parsing
 - `requests` - for HTTP requests
-- `rich` - for progress display in the terminal.
+- `rich` - for progress display in the terminal
 
 ## Directory Structure
 
