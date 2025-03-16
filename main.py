@@ -23,15 +23,11 @@ from helpers.general_utils import clear_terminal
 def parse_arguments() -> Namespace:
     """Parse only the --disable-ui argument."""
     parser = argparse.ArgumentParser(description="Acquire URL and other arguments.")
-
-    # Define only the --disable-ui argument
     parser.add_argument(
         "--disable-ui",
         action="store_true",
         help="Disable the user interface",
     )
-
-    # Use parse_known_args to only parse known arguments
     return parser.parse_args()
 
 

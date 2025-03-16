@@ -28,11 +28,11 @@ def save_file_with_progress(
 ) -> bool:
     """Save the file from the response to the specified path.
 
-    Adds a `.temp` extension if the download is partial.
+    Add a `.temp` extension if the download is partial.
     """
     file_size = int(response.headers.get("Content-Length", -1))
     if file_size == -1:
-        logging.exception("Content length not provided in response headers.")
+        logging.warning("Content length not provided in response headers.")
 
     # Create a temporary download path with the .temp extension
     temp_download_path = Path(download_path).with_suffix(".temp")

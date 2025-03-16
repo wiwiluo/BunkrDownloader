@@ -4,8 +4,8 @@ These configurations aim to improve modularity and readability by consolidating 
 into a single location.
 """
 
-STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for
-                                            # checking service availability.
+STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for checking
+                                            # service availability.
 BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
 DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
                                             # will be stored.

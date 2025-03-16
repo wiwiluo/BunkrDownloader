@@ -66,7 +66,7 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
             logging.exception("Remote end closed connection without response.")
             if attempt < retries - 1:
                 # Add jitter to avoid a retry storm
-                delay = 2 ** (attempt + 1) + random.uniform(0, 2)  # noqa: S311
+                delay = 2 ** (attempt + 1) + random.uniform(1, 2)  # noqa: S311
                 asyncio.sleep(delay)
 
         except requests.RequestException as req_err:

@@ -13,7 +13,7 @@ from base64 import b64decode
 from itertools import cycle
 from math import floor
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import requests
 
@@ -29,7 +29,7 @@ def get_host_page(url: str) -> str:
     return f"https://{url_netloc}"
 
 
-def check_url_type(url: str) -> bool:
+def check_url_type(url: str) -> bool | None:
     """Determine whether the provided URL corresponds to an album or a single file."""
     url_mapping = {"a": True, "f": False, "v": False}
 
@@ -39,7 +39,7 @@ def check_url_type(url: str) -> bool:
         if url_segment in url_mapping:
             return url_mapping[url_segment]
 
-        logging.exception("Enter a valid album or file URL.")
+        logging.warning("Enter a valid album or file URL.")
 
     except IndexError:
         logging.exception("Invalid URL format.")
@@ -54,9 +54,11 @@ def get_identifier(url: str) -> str:
     it returns the album ID. If not, it returns the last part of the URL (usually
     the individual item identifier).
     """
+    decoded_url = unquote(url)
+
     try:
-        is_album = check_url_type(url)
-        return get_album_id(url) if is_album else url.split("/")[-1]
+        is_album = check_url_type(decoded_url)
+        return get_album_id(decoded_url) if is_album else decoded_url.split("/")[-1]
 
     except IndexError:
         logging.exception("Error extracting the identifier.")
@@ -91,7 +93,7 @@ def get_album_name(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def get_item_type(item_page: str) -> str:
+def get_item_type(item_page: str) -> str | None:
     """Extract the type of item (album or single file) from the item page URL."""
     try:
         return item_page.split("/")[-2]
@@ -116,12 +118,8 @@ def get_api_response(item_url: str) -> dict | None:
     try:
         with requests.Session() as session:
             response = session.post(BUNKR_API, json={"slug": slug})
-
             if response.status_code != HTTP_STATUS_OK:
-                log_message = (
-                    f"Failed to fetch encryption data for slug '{slug}' "
-                    f"(status: {response.status_code})"
-                )
+                log_message = f"Failed to fetch encryption data for slug '{slug}'"
                 logging.warning(log_message)
                 return None
 
@@ -144,15 +142,16 @@ def decrypt_url(api_response: dict) -> str:
     except KeyError as key_err:
         log_message = f"Missing required encryption data field: {key_err}"
         logging.exception(log_message)
+        return ""
 
     # Generate the secret key based on the timestamp
     time_key = floor(timestamp / 3600)
     secret_key = f"SECRET_KEY_{time_key}"
-    secret_key_bytes = secret_key.encode("utf-8")
 
     # Create a cyclic iterator for the secret key
+    secret_key_bytes = secret_key.encode("utf-8")
     cycled_key = cycle(secret_key_bytes)
 
-    # Decrypt the data byte by byte using XOR
-    decrypted_data = [chr(byte ^ next(cycled_key)) for byte in encrypted_bytes]
-    return "".join(decrypted_data)
+    # Decrypt the data
+    decrypted_bytes = bytearray(byte ^ next(cycled_key) for byte in encrypted_bytes)
+    return decrypted_bytes.decode("utf-8", errors="ignore")

@@ -54,8 +54,7 @@ def get_item_container(item_soup: BeautifulSoup) -> BeautifulSoup | None:
             },
         )
 
-    # Return the found element (either <source>, <img>, or None if neither was
-    # found)
+    # Return the found element (either <source>, <img>, or None if neither was found)
     return item_container
 
 
@@ -104,7 +103,8 @@ def get_item_filename(item_soup: BeautifulSoup) -> str:
         "h1",
         {"class": "text-subs font-semibold text-base sm:text-lg truncate"},
     )
-    return item_filename_container.get_text()
+    item_filename = item_filename_container.get_text()
+    return item_filename.encode("latin1").decode("utf-8")
 
 
 def format_item_filename(original_filename: str, url_based_filename: str) -> str:

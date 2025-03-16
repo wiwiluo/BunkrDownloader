@@ -35,8 +35,8 @@ class MediaDownloader:
 
     def __init__(
         self,
-        session_info: tuple,
-        download_info: tuple,
+        session_info: tuple[dict[str, str], str],
+        download_info: tuple[str, str, int],
         live_manager: LiveManager,
         retries: int = 5,
         args: Namespace | None = None,
@@ -62,40 +62,25 @@ class MediaDownloader:
         ignore_list = getattr(self.args, "ignore", [])
         include_list = getattr(self.args, "include", [])
 
-        # Check if the file already exists
-        if Path(final_path).exists():
-            self.live_manager.update_log(
-                "Skipped download",
-                f"{self.file_name} has already been downloaded.",
-            )
+        def record_skip(reason: str) -> bool:
+            """Log the skip reason and updates the task before."""
+            self.live_manager.update_log("Skipped download", reason)
             self.live_manager.update_task(self.task, completed=100, visible=False)
             return True
 
-        # Check if the file is in the ignore list (if specified)
-        if ignore_list:
-            is_in_ignore = any(word in self.file_name for word in ignore_list)
-            if is_in_ignore:
-                self.live_manager.update_log(
-                    "Skipped download",
-                    f"{self.file_name} was skipped because it contains "
-                    "words in the ignore list.",
-                )
-                self.live_manager.update_task(self.task, completed=100, visible=False)
-                return True
+        # Check if the file already exists
+        if Path(final_path).exists():
+            return record_skip(f"{self.file_name} has already been downloaded.")
 
-        # Check if the file is not in the include list (if specified)
-        if include_list:
-            not_in_include = all(word not in self.file_name for word in include_list)
-            if not_in_include:
-                self.live_manager.update_log(
-                    "Skipped download",
-                    f"{self.file_name} was skipped because it does not contain "
-                    "words in the include list.",
-                )
-                self.live_manager.update_task(self.task, completed=100, visible=False)
-                return True
+        # Check if the file is in the ignore list
+        if ignore_list and any(word in self.file_name for word in ignore_list):
+            return record_skip(f"{self.file_name} matches the ignore list.")
 
-        # If none of the skip conditions are met, return False (do not skip)
+        # Check if the file is not in the include list
+        if include_list and all(word not in self.file_name for word in include_list):
+            return record_skip(f"No included words found for {self.file_name}.")
+
+        # If none of the skip conditions are met, do not skip
         return False
 
     def attempt_download(self, final_path: str) -> bool:
@@ -139,11 +124,7 @@ class MediaDownloader:
             "because of empty data blocks. Check the log file.",
         )
         write_on_session_log(self.download_link)
-        self.live_manager.update_task(
-            self.task,
-            completed=100,
-            visible=False,
-        )
+        self.live_manager.update_task(self.task, completed=100, visible=False)
 
     def handle_request_exception(self, req_err: RequestException, attempt: int) -> bool:
         """Handle exceptions during the request and manages retries."""
@@ -171,7 +152,7 @@ class MediaDownloader:
             )
             if attempt < self.retries - 1:
                 # Retry the request
-                delay = 3 ** (attempt + 1) + random.uniform(0, 3)  # noqa: S311
+                delay = 3 ** (attempt + 1) + random.uniform(1, 3)  # noqa: S311
                 time.sleep(delay)
                 return True
 

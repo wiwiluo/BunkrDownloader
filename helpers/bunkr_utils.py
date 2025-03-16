@@ -37,15 +37,15 @@ def get_bunkr_status() -> dict:
             },
         )
 
-        bunkr_status = {}
-        for server_item in server_items:
-            server_name = server_item.find("p").get_text(strip=True)
-            server_status = server_item.find("span").get_text(strip=True)
-            bunkr_status[server_name] = server_status
-
     except AttributeError:
         logging.exception("Error extracting server data.")
         return {}
+
+    bunkr_status = {}
+    for server_item in server_items:
+        server_name = server_item.find("p").get_text(strip=True)
+        server_status = server_item.find("span").get_text(strip=True)
+        bunkr_status[server_name] = server_status
 
     return bunkr_status
 
@@ -61,10 +61,8 @@ def get_offline_servers(bunkr_status: dict | None = None) -> dict:
 def subdomain_is_offline(download_link: str, bunkr_status: dict | None = None) -> bool:
     """Check if the subdomain from the given download link is marked as offline."""
     offline_servers = get_offline_servers(bunkr_status)
-
     netloc = urlparse(download_link).netloc
     subdomain = netloc.split(".")[0].capitalize()
-
     return subdomain in offline_servers
 
 

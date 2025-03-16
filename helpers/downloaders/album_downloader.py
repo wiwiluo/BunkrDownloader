@@ -21,8 +21,8 @@ class AlbumDownloader:
 
     def __init__(
         self,
-        session_info: tuple,
-        album_info: tuple,
+        session_info: tuple[dict[str, str], str],
+        album_info: tuple[str, list[str]],
         live_manager: LiveManager,
         args: Namespace,
     ) -> None:

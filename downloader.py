@@ -11,14 +11,10 @@ import argparse
 import asyncio
 import sys
 from argparse import Namespace
+from typing import TYPE_CHECKING
 
-from requests.exceptions import (
-    ConnectionError as RequestConnectionError,
-)
-from requests.exceptions import (
-    RequestException,
-    Timeout,
-)
+from requests.exceptions import ConnectionError as RequestConnectionError
+from requests.exceptions import RequestException, Timeout
 
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
@@ -40,10 +36,13 @@ from helpers.url_utils import (
     get_identifier,
 )
 
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+
 
 async def handle_download_process(
-    bunkr_status: dict,
-    page_info: tuple,
+    bunkr_status: dict[str, str],
+    page_info: tuple[str, BeautifulSoup],
     download_path: str,
     live_manager: LiveManager,
     args: Namespace,
@@ -77,7 +76,7 @@ async def handle_download_process(
 
 
 async def validate_and_download(
-    bunkr_status: dict,
+    bunkr_status: dict[str, str],
     url: str,
     live_manager: LiveManager,
     args: Namespace | None = None,
@@ -107,10 +106,7 @@ async def validate_and_download(
 
 def initialize_managers(*, disable_ui: bool = False) -> LiveManager:
     """Initialize and return the managers for progress tracking and logging."""
-    progress_manager = ProgressManager(
-        task_name="Album",
-        item_description="File",
-    )
+    progress_manager = ProgressManager(task_name="Album", item_description="File")
     logger_table = LoggerTable()
     return LiveManager(progress_manager, logger_table, disable_ui=disable_ui)
 
@@ -124,16 +120,14 @@ def parse_arguments() -> Namespace:
         type=str,
         nargs="+",
         help="A list of substrings to match against filenames. "
-        "Files containing any of these substrings "
-        "in their names will be skipped.",
+        "Files containing any of these substrings in their names will be skipped.",
     )
     parser.add_argument(
         "--include",
         type=str,
         nargs="+",
         help="A list of substrings to match against filenames. "
-        "Files containing any of these substrings "
-        "in their names will be downloaded.",
+        "Files containing any of these substrings in their names will be downloaded.",
     )
     parser.add_argument(
         "--disable-ui",
