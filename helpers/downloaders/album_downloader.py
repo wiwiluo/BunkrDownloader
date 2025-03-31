@@ -5,10 +5,9 @@ integrating with live task displays.
 """
 
 import asyncio
-from argparse import Namespace
 from asyncio import Semaphore
 
-from helpers.config import MAX_WORKERS
+from helpers.config import MAX_WORKERS, AlbumInfo, DownloadInfo, SessionInfo
 from helpers.crawlers.crawler_utils import get_download_info
 from helpers.general_utils import fetch_page
 from helpers.managers.live_manager import LiveManager
@@ -21,17 +20,15 @@ class AlbumDownloader:
 
     def __init__(
         self,
-        session_info: tuple[dict[str, str], str],
-        album_info: tuple[str, list[str]],
+        session_info: SessionInfo,
+        album_info: AlbumInfo,
         live_manager: LiveManager,
-        args: Namespace,
     ) -> None:
         """Initialize the AlbumDownloader instance."""
-        self.bunkr_status, self.download_path = session_info
-        self.album_id, self.item_pages = album_info
+        self.session_info = session_info
+        self.album_info = album_info
         self.live_manager = live_manager
         self.failed_downloads = []
-        self.args = args
 
     async def execute_item_download(
         self,
@@ -45,18 +42,20 @@ class AlbumDownloader:
 
             # Process the download of an item
             item_soup = await fetch_page(item_page)
-            (
-                item_download_link,
-                item_file_name,
-            ) = await get_download_info(item_page, item_soup)
+            item_download_link, item_filename = await get_download_info(
+                item_page, item_soup,
+            )
 
             # Download item
             if item_download_link:
                 downloader = MediaDownloader(
-                    session_info=(self.bunkr_status, self.download_path),
-                    download_info=(item_download_link, item_file_name, task),
+                    session_info=self.session_info,
+                    download_info=DownloadInfo(
+                        download_link=item_download_link,
+                        filename=item_filename,
+                        task=task,
+                    ),
                     live_manager=self.live_manager,
-                    args=self.args,
                 )
 
                 failed_download = await asyncio.to_thread(downloader.download)
@@ -66,13 +65,13 @@ class AlbumDownloader:
     async def retry_failed_download(
         self,
         task: int,
-        file_name: str,
+        filename: str,
         download_link: str,
     ) -> None:
         """Handle failed downloads and retries them."""
         downloader = MediaDownloader(
-            session_info=(self.bunkr_status, self.download_path),
-            download_info=(download_link, file_name, task),
+            session_info=self.session_info,
+            download_info=DownloadInfo(download_link, filename, task),
             live_manager=self.live_manager,
             retries=1,  # Retry once for failed downloads
         )
@@ -84,16 +83,16 @@ class AlbumDownloader:
         for data in self.failed_downloads:
             await self.retry_failed_download(
                 data["id"],
-                data["file_name"],
+                data["filename"],
                 data["download_link"],
             )
         self.failed_downloads.clear()
 
     async def download_album(self, max_workers: int = MAX_WORKERS) -> None:
         """Handle the album download."""
-        num_tasks = len(self.item_pages)
+        num_tasks = len(self.album_info.item_pages)
         self.live_manager.add_overall_task(
-            description=self.album_id,
+            description=self.album_info.album_id,
             num_tasks=num_tasks,
         )
 
@@ -101,7 +100,7 @@ class AlbumDownloader:
         semaphore = asyncio.Semaphore(max_workers)
         tasks = [
             self.execute_item_download(item_page, current_task, semaphore)
-            for current_task, item_page in enumerate(self.item_pages)
+            for current_task, item_page in enumerate(self.album_info.item_pages)
         ]
         await asyncio.gather(*tasks)
 

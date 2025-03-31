@@ -20,22 +20,19 @@ import requests
 from bs4 import BeautifulSoup
 from requests import Response
 
-from .config import (
-    DOWNLOAD_FOLDER,
-    HTTP_STATUS_SERVER_DOWN,
-)
-from .config import DOWNLOAD_HEADERS as HEADERS
+from .config import DOWNLOAD_FOLDER, DOWNLOAD_HEADERS, HTTP_STATUS_SERVER_DOWN
 from .file_utils import write_on_session_log
 
 
 def validate_download_link(download_link: str) -> bool:
     """Check if a download link is accessible."""
     try:
-        response = requests.head(download_link, headers=HEADERS, timeout=5)
-        return response.status_code != HTTP_STATUS_SERVER_DOWN
+        response = requests.head(download_link, headers=DOWNLOAD_HEADERS, timeout=5)
 
     except requests.RequestException:
         return False
+
+    return response.status_code != HTTP_STATUS_SERVER_DOWN
 
 
 async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:

@@ -34,16 +34,15 @@ def check_url_type(url: str) -> bool | None:
     url_mapping = {"a": True, "f": False, "v": False}
 
     try:
-        url_segment = url.split("/")[-2]
-
-        if url_segment in url_mapping:
-            return url_mapping[url_segment]
-
-        logging.warning("Enter a valid album or file URL.")
+        url_type = url.split("/")[-2]
 
     except IndexError:
         logging.exception("Invalid URL format.")
 
+    if url_type in url_mapping:
+        return url_mapping[url_type]
+
+    logging.warning("Enter a valid album or file URL.")
     return None
 
 
@@ -111,7 +110,7 @@ def get_url_based_filename(item_download_link: str) -> str:
     return parsed_url.path.split("/")[-1]
 
 
-def get_api_response(item_url: str) -> dict | None:
+def get_api_response(item_url: str) -> dict[str, bool | str | int] | None:
     """Fetch encryption data for a given slug from the Bunkr API."""
     slug = get_identifier(item_url)
 
@@ -126,14 +125,12 @@ def get_api_response(item_url: str) -> dict | None:
         return response.json()
 
     except requests.RequestException as req_err:
-        log_message = (
-            f"Error while requesting encryption data for slug '{slug}': {req_err}"
-        )
+        log_message = f"Error while requesting encryption data for '{slug}': {req_err}"
         logging.exception(log_message)
         return None
 
 
-def decrypt_url(api_response: dict) -> str:
+def decrypt_url(api_response: dict[str, bool | str | int]) -> str:
     """Decrypt an encrypted URL using a time-based secret key."""
     try:
         timestamp = api_response["timestamp"]

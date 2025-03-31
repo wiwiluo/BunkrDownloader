@@ -17,6 +17,7 @@ from requests.exceptions import ConnectionError as RequestConnectionError
 from requests.exceptions import RequestException, Timeout
 
 from helpers.bunkr_utils import get_bunkr_status
+from helpers.config import AlbumInfo, DownloadInfo, SessionInfo
 from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
 from helpers.downloaders.album_downloader import AlbumDownloader, MediaDownloader
 from helpers.general_utils import (
@@ -41,35 +42,36 @@ if TYPE_CHECKING:
 
 
 async def handle_download_process(
-    bunkr_status: dict[str, str],
-    page_info: tuple[str, BeautifulSoup],
-    download_path: str,
+    session_info: SessionInfo,
+    url: str,
+    soup: BeautifulSoup,
     live_manager: LiveManager,
-    args: Namespace,
 ) -> None:
     """Handle the download process for a Bunkr album or a single item."""
-    url, soup = page_info
     host_page = get_host_page(url)
     identifier = get_identifier(url)
 
     if check_url_type(url):
         item_pages = extract_item_pages(soup, host_page)
         album_downloader = AlbumDownloader(
-            session_info=(bunkr_status, download_path),
-            album_info=(identifier, item_pages),
+            session_info=session_info,
+            album_info=AlbumInfo(album_id=identifier, item_pages=item_pages),
             live_manager=live_manager,
-            args=args,
         )
         await album_downloader.download_album()
 
     else:
-        download_link, file_name = await get_download_info(url, soup)
+        download_link, filename = await get_download_info(url, soup)
         live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
         downloader = MediaDownloader(
-            session_info=(bunkr_status, download_path),
-            download_info=(download_link, file_name, task),
+            session_info=session_info,
+            download_info=DownloadInfo(
+                download_link=download_link,
+                filename=filename,
+                task=task,
+            ),
             live_manager=live_manager,
         )
         downloader.download()
@@ -89,15 +91,14 @@ async def validate_and_download(
 
     directory_name = format_directory_name(album_name, album_id)
     download_path = create_download_directory(directory_name)
+    session_info = SessionInfo(
+        args=args,
+        bunkr_status=bunkr_status,
+        download_path=download_path,
+    )
 
     try:
-        await handle_download_process(
-            bunkr_status,
-            (url, soup),
-            download_path,
-            live_manager,
-            args=args,
-        )
+        await handle_download_process(session_info, url, soup, live_manager)
 
     except (RequestConnectionError, Timeout, RequestException) as err:
         error_message = f"Error downloading from {url}: {err}"

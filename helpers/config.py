@@ -3,15 +3,24 @@
 These configurations aim to improve modularity and readability by consolidating settings
 into a single location.
 """
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argparse import Namespace
 
 STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for checking
                                             # service availability.
 BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
+
 DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
                                             # will be stored.
 FILE = "URLs.txt"                           # The name of the file containing the
                                             # list of URLs to process.
 SESSION_LOG = "session_log.txt"             # The file used to log errors.
+
 MAX_WORKERS = 4                             # The maximum number of threads for
                                             # concurrent downloads.
 
@@ -43,8 +52,8 @@ HTTP_STATUS_SERVER_DOWN = 521
 # Headers used for general HTTP requests.
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:135.0) "
-        "Gecko/20100101 Firefox/135.0"
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) "
+        "Gecko/20100101 Firefox/136.0"
     ),
 }
 
@@ -54,3 +63,26 @@ DOWNLOAD_HEADERS = {
     "Connection": "keep-alive",
     "Referer": "https://get.bunkrr.su/",
 }
+
+@dataclass
+class DownloadInfo:
+    """Represent the information related to a download task."""
+
+    download_link: str
+    filename: str
+    task: int
+
+@dataclass
+class SessionInfo:
+    """Hold the session-related information."""
+
+    args: Namespace | None
+    bunkr_status: dict[str, str]
+    download_path: str
+
+@dataclass
+class AlbumInfo:
+    """Store the informations about an album and its associated item pages."""
+
+    album_id: str
+    item_pages: list[str]
