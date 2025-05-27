@@ -24,7 +24,7 @@ from .config import (
     DOWNLOAD_FOLDER,
     DOWNLOAD_HEADERS,
     HTTP_STATUS_SERVER_DOWN,
-    MAX_FILENAME_BYTES,
+    MAX_FILENAME_LEN,
 )
 from .file_utils import write_on_session_log
 
