@@ -15,7 +15,7 @@ STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for che
                                             # service availability.
 BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
 
-MAX_FILENAME_BYTES = 120                    # Maximum byte length for a file name.
+MAX_FILENAME_LEN = 120                      # Maximum byte length for a file name.
 DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
                                             # will be stored.
 FILE = "URLs.txt"                           # The name of the file containing the
