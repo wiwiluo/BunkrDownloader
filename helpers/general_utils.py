@@ -20,7 +20,12 @@ import requests
 from bs4 import BeautifulSoup
 from requests import Response
 
-from .config import DOWNLOAD_FOLDER, DOWNLOAD_HEADERS, HTTP_STATUS_SERVER_DOWN
+from .config import (
+    DOWNLOAD_FOLDER,
+    DOWNLOAD_HEADERS,
+    HTTP_STATUS_SERVER_DOWN,
+    MAX_FILENAME_BYTES,
+)
 from .file_utils import write_on_session_log
 
 
@@ -113,6 +118,38 @@ def create_download_directory(directory_name: str) -> str:
     except OSError:
         logging.exception("Error creating 'Downloads' directory.")
         sys.exit(1)
+
+def remove_invalid_characters(text: str) -> str:
+    """Remove invalid characters from the input string.
+
+    This function keeps only letters (both uppercase and lowercase), digits, spaces,
+    hyphens ('-'), and underscores ('_').
+    """
+    return re.sub(r"[^a-zA-Z0-9 _-]", "", text)
+
+
+def truncate_filename(filename: str) -> str:
+    """Truncate the filename to fit within the maximum byte length.
+
+    This function ensures that the total byte length of the filename (including its
+    extension) does not exceed a specified limit. It also removes any invalid characters
+    from the base name of the file.
+    """
+    filename_path = Path(filename)
+    name = remove_invalid_characters(filename_path.stem)
+    extension = filename_path.suffix
+
+    name_bytes = name.encode("utf-8")
+    extension_bytes = extension.encode("utf-8")
+    total_length = len(name_bytes) + len(extension_bytes)
+
+    if total_length > MAX_FILENAME_BYTES:
+        available_name_bytes = MAX_FILENAME_BYTES - len(extension_bytes)
+        truncated_name_bytes = name_bytes[:available_name_bytes]
+        truncated_name = truncated_name_bytes.decode("utf-8", errors="ignore")
+        return str(filename_path.with_name(truncated_name + extension))
+
+    return filename
 
 
 def clear_terminal() -> None:

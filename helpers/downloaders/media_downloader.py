@@ -23,6 +23,7 @@ from helpers.config import (
     SessionInfo,
 )
 from helpers.file_utils import write_on_session_log
+from helpers.general_utils import truncate_filename
 
 from .download_utils import save_file_with_progress
 
@@ -220,7 +221,8 @@ class MediaDownloader:
             self.live_manager.update_task(self.download_info.task, visible=False)
             return None
 
-        final_path = Path(self.session_info.download_path) / self.download_info.filename
+        formatted_filename = truncate_filename(self.download_info.filename)
+        final_path = Path(self.session_info.download_path) / formatted_filename
 
         # Skip download if the file exists or is blacklisted
         if self.skip_file_download(final_path):

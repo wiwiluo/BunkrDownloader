@@ -15,13 +15,14 @@ STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for che
                                             # service availability.
 BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
 
+MAX_FILENAME_BYTES = 120                    # Maximum byte length for a file name.
 DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
                                             # will be stored.
 FILE = "URLs.txt"                           # The name of the file containing the
                                             # list of URLs to process.
 SESSION_LOG = "session_log.txt"             # The file used to log errors.
 
-MAX_WORKERS = 4                             # The maximum number of threads for
+MAX_WORKERS = 3                             # The maximum number of threads for
                                             # concurrent downloads.
 
 # Constants for file sizes, expressed in bytes.
