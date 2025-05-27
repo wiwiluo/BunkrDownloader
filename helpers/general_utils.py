@@ -129,24 +129,14 @@ def remove_invalid_characters(text: str) -> str:
 
 
 def truncate_filename(filename: str) -> str:
-    """Truncate the filename to fit within the maximum byte length.
-
-    This function ensures that the total byte length of the filename (including its
-    extension) does not exceed a specified limit. It also removes any invalid characters
-    from the base name of the file.
-    """
+    """Truncate the filename to fit within the maximum byte length."""
     filename_path = Path(filename)
     name = remove_invalid_characters(filename_path.stem)
     extension = filename_path.suffix
 
-    name_bytes = name.encode("utf-8")
-    extension_bytes = extension.encode("utf-8")
-    total_length = len(name_bytes) + len(extension_bytes)
-
-    if total_length > MAX_FILENAME_BYTES:
-        available_name_bytes = MAX_FILENAME_BYTES - len(extension_bytes)
-        truncated_name_bytes = name_bytes[:available_name_bytes]
-        truncated_name = truncated_name_bytes.decode("utf-8", errors="ignore")
+    if len(name) > MAX_FILENAME_LEN:
+        available_len = MAX_FILENAME_LEN - len(extension)
+        truncated_name = name[:available_len]
         return str(filename_path.with_name(truncated_name + extension))
 
     return filename
