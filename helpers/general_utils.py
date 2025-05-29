@@ -136,10 +136,10 @@ def truncate_filename(filename: str) -> str:
 
     if len(name) > MAX_FILENAME_LEN:
         available_len = MAX_FILENAME_LEN - len(extension)
-        truncated_name = name[:available_len]
-        return str(filename_path.with_name(truncated_name + extension))
+        name = name[:available_len]
 
-    return filename
+    formatted_filename = f"{name}{extension}"
+    return str(filename_path.with_name(formatted_filename))
 
 
 def clear_terminal() -> None:
