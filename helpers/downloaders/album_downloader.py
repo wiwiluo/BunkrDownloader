@@ -104,7 +104,6 @@ class AlbumDownloader:
         ]
         await asyncio.gather(*tasks)
 
-        # If there are failed downloads, process them after all downloads are
-        # complete
+        # If there are failed downloads, process them after all downloads are complete
         if self.failed_downloads:
             await self.process_failed_downloads()

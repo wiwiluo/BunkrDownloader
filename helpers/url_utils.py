@@ -13,7 +13,7 @@ from base64 import b64decode
 from itertools import cycle
 from math import floor
 from typing import TYPE_CHECKING
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlunparse
 
 import requests
 
@@ -27,6 +27,17 @@ def get_host_page(url: str) -> str:
     """Extract the base host URL from a given URL."""
     url_netloc = urlparse(url).netloc
     return f"https://{url_netloc}"
+
+
+def change_domain_to_cr(url: str) -> str:
+    """Replace the domain of the given URL with 'bunkr.cr'.
+
+    This is useful for retrying requests using an alternative domain (e.g., when
+    the original domain is blocked or returns a 403 error).
+    """
+    parsed = urlparse(url)
+    new_parsed = parsed._replace(netloc="bunkr.cr")
+    return urlunparse(new_parsed)
 
 
 def check_url_type(url: str) -> bool | None:

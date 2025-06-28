@@ -23,10 +23,12 @@ from requests import Response
 from .config import (
     DOWNLOAD_FOLDER,
     DOWNLOAD_HEADERS,
+    HTTP_STATUS_FORBIDDEN,
     HTTP_STATUS_SERVER_DOWN,
     MAX_FILENAME_LEN,
 )
 from .file_utils import write_on_session_log
+from .url_utils import change_domain_to_cr
 
 
 def validate_download_link(download_link: str) -> bool:
@@ -42,6 +44,7 @@ def validate_download_link(download_link: str) -> bool:
 
 async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
     """Fetch the HTML content of a page at the given URL, with retry logic."""
+    tried_cr = False
     error_messages = {
         500: f"Internal server error when fetching {url}",
         502: f"Bad gateway for {url}, probably offline",
@@ -61,6 +64,11 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
     for attempt in range(retries):
         try:
             response = requests.Session().get(url, timeout=40)
+            if response.status_code == HTTP_STATUS_FORBIDDEN and not tried_cr:
+                tried_cr = True
+                url = change_domain_to_cr(url)
+                continue  # retry immediately with .cr
+
             response.raise_for_status()
             return handle_response(response)
 

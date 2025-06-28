@@ -61,7 +61,7 @@ class MediaDownloader:
         ignore_list = getattr(self.session_info.args, "ignore", [])
         include_list = getattr(self.session_info.args, "include", [])
 
-        def record_skip(reason: str) -> bool:
+        def log_skip_event(reason: str) -> bool:
             """Log the skip reason and updates the task before."""
             self.live_manager.update_log("Skipped download", reason)
             self.live_manager.update_task(
@@ -71,7 +71,7 @@ class MediaDownloader:
 
         # Check if the file already exists
         if Path(final_path).exists():
-            return record_skip(
+            return log_skip_event(
                 f"{self.download_info.filename} has already been downloaded.",
             )
 
@@ -79,7 +79,7 @@ class MediaDownloader:
         if ignore_list and any(
             word in self.download_info.filename for word in ignore_list
         ):
-            return record_skip(
+            return log_skip_event(
                 f"{self.download_info.filename} matches the ignore list.",
             )
 
@@ -87,7 +87,7 @@ class MediaDownloader:
         if include_list and all(
             word not in self.download_info.filename for word in include_list
         ):
-            return record_skip(
+            return log_skip_event(
                 f"No included words found for {self.download_info.filename}.",
             )
 
