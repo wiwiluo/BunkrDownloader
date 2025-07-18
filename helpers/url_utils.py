@@ -7,6 +7,7 @@ extracting relevant identifiers for albums or videos.
 from __future__ import annotations
 
 import html
+import re
 import logging
 import sys
 from base64 import b64decode
@@ -17,7 +18,7 @@ from urllib.parse import unquote, urlparse, urlunparse
 
 import requests
 
-from .config import BUNKR_API, HTTP_STATUS_OK
+from .config import BUNKR_API, HTTP_STATUS_OK, MEDIA_SLUG_REGEX, VALID_SLUG_REGEX
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -57,7 +58,7 @@ def check_url_type(url: str) -> bool | None:
     return None
 
 
-def get_identifier(url: str) -> str:
+def get_identifier(url: str, soup: BeautifulSoup | None = None) -> str:
     """Extract the identifier from the provided URL.
 
     This function determines if the given URL corresponds to an album. If it is,
@@ -68,7 +69,7 @@ def get_identifier(url: str) -> str:
 
     try:
         is_album = check_url_type(decoded_url)
-        return get_album_id(decoded_url) if is_album else decoded_url.split("/")[-1]
+        return get_album_id(decoded_url) if is_album else get_media_slug(decoded_url, soup)
 
     except IndexError:
         logging.exception("Error extracting the identifier.")
@@ -84,6 +85,28 @@ def get_album_id(url: str) -> str:
     except IndexError:
         logging.exception("Invalid URL format.")
         sys.exit(1)
+
+
+def get_media_slug(url: str, soup: BeautifulSoup) -> str | None:
+    """Extract the media slug from the URL or, if necessary, from the HTML content.
+
+    Tries to obtain the media slug (e.g., 'filename.mp4') directly from the last
+    segment of the URL. If this segment is empty or unreliable, it searches the HTML
+    <script> tags for a match using MEDIA_SLUG_REGEX.
+    """
+    media_slug = url.rstrip("/").split("/")[-1]
+    if re.fullmatch(VALID_SLUG_REGEX, media_slug):
+        return media_slug
+
+    # Fallback: try to find slug in script tags
+    for item in soup.find_all("script"):
+        script_text = item.get_text()
+        match = re.search(MEDIA_SLUG_REGEX, script_text)
+        if match:
+            return match.group(1)
+
+    logging.warning("No media slug in the HTML content.")
+    return None
 
 
 def get_album_name(soup: BeautifulSoup) -> str | None:
@@ -121,9 +144,9 @@ def get_url_based_filename(item_download_link: str) -> str:
     return parsed_url.path.split("/")[-1]
 
 
-def get_api_response(item_url: str) -> dict[str, bool | str | int] | None:
+def get_api_response(item_url: str, soup: BeautifulSoup | None = None) -> dict[str, bool | str | int] | None:
     """Fetch encryption data for a given slug from the Bunkr API."""
-    slug = get_identifier(item_url)
+    slug = get_identifier(item_url, soup=soup)
 
     try:
         with requests.Session() as session:
