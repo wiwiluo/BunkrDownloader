@@ -7,8 +7,8 @@ extracting relevant identifiers for albums or videos.
 from __future__ import annotations
 
 import html
-import re
 import logging
+import re
 import sys
 from base64 import b64decode
 from itertools import cycle
@@ -69,7 +69,9 @@ def get_identifier(url: str, soup: BeautifulSoup | None = None) -> str:
 
     try:
         is_album = check_url_type(decoded_url)
-        return get_album_id(decoded_url) if is_album else get_media_slug(decoded_url, soup)
+        return (
+            get_album_id(decoded_url) if is_album else get_media_slug(decoded_url, soup)
+        )
 
     except IndexError:
         logging.exception("Error extracting the identifier.")
@@ -144,7 +146,9 @@ def get_url_based_filename(item_download_link: str) -> str:
     return parsed_url.path.split("/")[-1]
 
 
-def get_api_response(item_url: str, soup: BeautifulSoup | None = None) -> dict[str, bool | str | int] | None:
+def get_api_response(
+    item_url: str, soup: BeautifulSoup | None = None,
+) -> dict[str, bool | str | int] | None:
     """Fetch encryption data for a given slug from the Bunkr API."""
     slug = get_identifier(item_url, soup=soup)
 
