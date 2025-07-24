@@ -49,7 +49,7 @@ async def handle_download_process(
 ) -> None:
     """Handle the download process for a Bunkr album or a single item."""
     host_page = get_host_page(url)
-    identifier = get_identifier(url, soup=soup)
+    identifier = get_identifier(url)
 
     if check_url_type(url):
         item_pages = extract_item_pages(soup, host_page)
