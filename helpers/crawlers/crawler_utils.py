@@ -36,9 +36,12 @@ def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str]:
     return []
 
 
-async def get_item_download_link(item_url: str) -> str:
+async def get_item_download_link(
+    item_url: str, soup: BeautifulSoup | None = None,
+) -> str:
+
     """Retrieve the download link for a specific item from its HTML content."""
-    api_response = get_api_response(item_url)
+    api_response = get_api_response(item_url, soup=soup)
     return decrypt_url(api_response)
 
 
@@ -76,7 +79,7 @@ def format_item_filename(original_filename: str, url_based_filename: str) -> str
 
 async def get_download_info(item_url: str, item_soup: BeautifulSoup) -> tuple:
     """Gather download information (link and filename) for the item."""
-    item_download_link = await get_item_download_link(item_url)
+    item_download_link = await get_item_download_link(item_url, soup=item_soup)
     item_filename = get_item_filename(item_soup)
 
     url_based_filename = (

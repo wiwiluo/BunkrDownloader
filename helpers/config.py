@@ -26,6 +26,10 @@ MAX_FILENAME_LEN = 120                      # The maximum length for a file name
 MAX_WORKERS = 3                             # The maximum number of threads for
                                             # concurrent downloads.
 
+# Regex used to extract and validate the media slug
+VALID_SLUG_REGEX = r"^[a-zA-Z0-9_-]+$"
+MEDIA_SLUG_REGEX = r'const\s+slug\s*=\s*"([a-zA-Z0-9_-]+)"'
+
 # Constants for file sizes, expressed in bytes.
 KB = 1024
 MB = 1024 * KB
