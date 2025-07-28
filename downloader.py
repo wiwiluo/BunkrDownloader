@@ -20,6 +20,7 @@ from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import AlbumInfo, DownloadInfo, SessionInfo
 from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
 from helpers.downloaders.album_downloader import AlbumDownloader, MediaDownloader
+from helpers.file_utils import check_disk_space, check_python_version
 from helpers.general_utils import (
     clear_terminal,
     create_download_directory,
@@ -85,7 +86,6 @@ async def validate_and_download(
 ) -> None:
     """Validate the provided URL, and initiate the download process."""
     soup = await fetch_page(url)
-
     album_id = get_album_id(url) if check_url_type(url) else None
     album_name = get_album_name(soup)
 
@@ -141,6 +141,9 @@ def parse_arguments() -> Namespace:
 async def main() -> None:
     """Initialize the download process."""
     clear_terminal()
+    check_python_version()
+    check_disk_space()
+
     bunkr_status = get_bunkr_status()
     args = parse_arguments()
     live_manager = initialize_managers(disable_ui=args.disable_ui)

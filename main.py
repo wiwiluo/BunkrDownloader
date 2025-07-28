@@ -1,4 +1,4 @@
-"""Module that provides functionality to read URLs from a file, and download from them.
+"""Main module to read Bunkr URLs from a file, and download from them.
 
 This module manages the entire download process by leveraging asynchronous
 operations, allowing for efficient handling of multiple URLs.
@@ -16,7 +16,12 @@ from argparse import Namespace
 from downloader import initialize_managers, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import FILE, SESSION_LOG
-from helpers.file_utils import read_file, write_file
+from helpers.file_utils import (
+    check_disk_space,
+    check_python_version,
+    read_file,
+    write_file,
+)
 from helpers.general_utils import clear_terminal
 
 
@@ -39,6 +44,7 @@ async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
     try:
         with live_manager.live:
             for url in urls:
+                check_disk_space()
                 await validate_and_download(bunkr_status, url, live_manager)
             live_manager.stop()
 
@@ -51,6 +57,10 @@ async def main() -> None:
     # Clear the terminal and session log file
     clear_terminal()
     write_file(SESSION_LOG)
+
+    # Check Python version and disk space
+    check_python_version()
+    check_disk_space()
 
     # Parse arguments to get disable_ui flag
     args = parse_arguments()

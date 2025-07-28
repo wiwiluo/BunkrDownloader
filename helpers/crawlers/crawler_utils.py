@@ -39,7 +39,6 @@ def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str]:
 async def get_item_download_link(
     item_url: str, soup: BeautifulSoup | None = None,
 ) -> str:
-
     """Retrieve the download link for a specific item from its HTML content."""
     api_response = get_api_response(item_url, soup=soup)
     return decrypt_url(api_response)

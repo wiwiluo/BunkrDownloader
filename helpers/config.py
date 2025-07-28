@@ -16,17 +16,22 @@ STATUS_PAGE = "https://status.bunkr.ru/"    # The URL of the status page for che
                                             # service availability.
 BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption data.
 
-DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files
-                                            # will be stored.
-FILE = "URLs.txt"                           # The name of the file containing the
-                                            # list of URLs to process.
+DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files will be
+                                            # stored.
+FILE = "URLs.txt"                           # The name of the file containing the list
+                                            # of URLs to process.
 SESSION_LOG = "session_log.txt"             # The file used to log errors.
 
 MAX_FILENAME_LEN = 120                      # The maximum length for a file name.
 MAX_WORKERS = 3                             # The maximum number of threads for
                                             # concurrent downloads.
 
-# Regex used to extract and validate the media slug
+# Maps URL type identifiers to a boolean indicating whether the URL points to an album
+# (True) or a single file (False). For example, URLs containing '/a/' are considered
+# albums, while '/f/' or '/v/' are single files.
+URL_TYPE_MAPPING = {"a": True, "f": False, "v": False}
+
+# Regex used to extract and validate the media slug.
 VALID_SLUG_REGEX = r"^[a-zA-Z0-9_-]+$"
 MEDIA_SLUG_REGEX = r'const\s+slug\s*=\s*"([a-zA-Z0-9_-]+)"'
 

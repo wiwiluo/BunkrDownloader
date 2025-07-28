@@ -18,7 +18,13 @@ from urllib.parse import unquote, urlparse, urlunparse
 
 import requests
 
-from .config import BUNKR_API, HTTP_STATUS_OK, MEDIA_SLUG_REGEX, VALID_SLUG_REGEX
+from .config import (
+    BUNKR_API,
+    HTTP_STATUS_OK,
+    MEDIA_SLUG_REGEX,
+    URL_TYPE_MAPPING,
+    VALID_SLUG_REGEX,
+)
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -36,26 +42,26 @@ def change_domain_to_cr(url: str) -> str:
     This is useful for retrying requests using an alternative domain (e.g., when
     the original domain is blocked or returns a 403 error).
     """
-    parsed = urlparse(url)
-    new_parsed = parsed._replace(netloc="bunkr.cr")
-    return urlunparse(new_parsed)
+    parsed_url = urlparse(url)
+    new_parsed_url = parsed_url._replace(netloc="bunkr.cr")
+    return urlunparse(new_parsed_url)
 
 
-def check_url_type(url: str) -> bool | None:
+def check_url_type(url: str) -> bool:
     """Determine whether the provided URL corresponds to an album or a single file."""
-    url_mapping = {"a": True, "f": False, "v": False}
-
     try:
-        url_type = url.split("/")[-2]
+        url_type = url.rstrip("/").split("/")[-2]
 
     except IndexError:
-        logging.exception("Invalid URL format.")
+        log_message = f"Invalid URL format for: {url}"
+        logging.exception(log_message)
 
-    if url_type in url_mapping:
-        return url_mapping[url_type]
+    if url_type in URL_TYPE_MAPPING:
+        return URL_TYPE_MAPPING[url_type]
 
-    logging.warning("Enter a valid album or file URL.")
-    return None
+    log_message = f"Invalid URL format for: {url}. Unexpected URL type '{url_type}'."
+    logging.warning(log_message)
+    sys.exit(1)
 
 
 def get_identifier(url: str, soup: BeautifulSoup | None = None) -> str:
@@ -74,7 +80,8 @@ def get_identifier(url: str, soup: BeautifulSoup | None = None) -> str:
         )
 
     except IndexError:
-        logging.exception("Error extracting the identifier.")
+        log_message = f"Error extracting the identifier from: {url}"
+        logging.exception(log_message)
 
     return url
 
@@ -85,8 +92,10 @@ def get_album_id(url: str) -> str:
         return url.rstrip("/").split("/")[-1]
 
     except IndexError:
-        logging.exception("Invalid URL format.")
+        log_message = f"Invalid URL format for: {url}"
+        logging.exception(log_message)
         sys.exit(1)
+
 
 def get_media_slug(url: str, soup: BeautifulSoup) -> str:
     """Extract the media slug from the URL or, if necessary, from the HTML content.
@@ -133,7 +142,8 @@ def get_item_type(item_page: str) -> str | None:
         return item_page.split("/")[-2]
 
     except AttributeError:
-        logging.exception("Error extracting the item type.")
+        log_message = f"Error extracting the item type from {item_page}"
+        logging.exception(log_message)
 
     return None
 
@@ -145,7 +155,10 @@ def get_url_based_filename(item_download_link: str) -> str:
     return parsed_url.path.split("/")[-1]
 
 
-def get_api_response(item_url: str, soup: BeautifulSoup | None = None,) -> dict[str, bool | str | int] | None:
+def get_api_response(
+    item_url: str,
+    soup: BeautifulSoup | None = None,
+) -> dict[str, bool | str | int] | None:
     """Fetch encryption data for a given slug from the Bunkr API."""
     slug = get_identifier(item_url, soup=soup)
 
