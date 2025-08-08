@@ -142,11 +142,11 @@ async def main() -> None:
     """Initialize the download process."""
     clear_terminal()
     check_python_version()
-    check_disk_space()
 
     bunkr_status = get_bunkr_status()
     args = parse_arguments()
     live_manager = initialize_managers(disable_ui=args.disable_ui)
+    check_disk_space(live_manager=live_manager)
 
     try:
         with live_manager.live:

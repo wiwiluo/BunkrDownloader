@@ -44,8 +44,9 @@ async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
     try:
         with live_manager.live:
             for url in urls:
-                check_disk_space()
+                check_disk_space(live_manager=live_manager)
                 await validate_and_download(bunkr_status, url, live_manager)
+
             live_manager.stop()
 
     except KeyboardInterrupt:
@@ -58,9 +59,8 @@ async def main() -> None:
     clear_terminal()
     write_file(SESSION_LOG)
 
-    # Check Python version and disk space
+    # Check Python version
     check_python_version()
-    check_disk_space()
 
     # Parse arguments to get disable_ui flag
     args = parse_arguments()

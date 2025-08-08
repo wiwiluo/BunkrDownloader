@@ -11,6 +11,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from helpers.managers.live_manager import LiveManager
+
 from .config import SESSION_LOG
 
 
@@ -57,13 +59,16 @@ def check_python_version(min_version: tuple[int, int] = (3, 10)) -> None:
         sys.exit(1)
 
 
-def check_disk_space(min_space: int = 3) -> None:
+def check_disk_space(live_manager: LiveManager, min_space: int = 3) -> None:
     """Check if the available disk space is greater than or equal to `min_space` GB."""
     root_path = get_root_path()
     _, _, free_space = shutil.disk_usage(root_path)
     free_space_gb = free_space / (1024 ** 3)
 
     if free_space_gb < min_space:
-        log_message = f"Insufficient disk space: only {free_space_gb:.2f} GB available."
-        logging.warning(log_message)
+        live_manager.update_log(
+            "Insufficient disk space",
+            f"Only {free_space_gb:.2f} GB available on the disk. "
+            "The program has been stopped to prevent data loss.",
+        )
         sys.exit(1)
