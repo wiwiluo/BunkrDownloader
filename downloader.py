@@ -85,6 +85,8 @@ async def validate_and_download(
     args: Namespace | None = None,
 ) -> None:
     """Validate the provided URL, and initiate the download process."""
+    check_disk_space(live_manager=live_manager)
+
     soup = await fetch_page(url)
     album_id = get_album_id(url) if check_url_type(url) else None
     album_name = get_album_name(soup)
@@ -146,7 +148,6 @@ async def main() -> None:
     bunkr_status = get_bunkr_status()
     args = parse_arguments()
     live_manager = initialize_managers(disable_ui=args.disable_ui)
-    check_disk_space(live_manager=live_manager)
 
     try:
         with live_manager.live:

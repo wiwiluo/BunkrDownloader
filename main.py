@@ -17,7 +17,6 @@ from downloader import initialize_managers, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import FILE, SESSION_LOG
 from helpers.file_utils import (
-    check_disk_space,
     check_python_version,
     read_file,
     write_file,
@@ -44,7 +43,6 @@ async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
     try:
         with live_manager.live:
             for url in urls:
-                check_disk_space(live_manager=live_manager)
                 await validate_and_download(bunkr_status, url, live_manager)
 
             live_manager.stop()
