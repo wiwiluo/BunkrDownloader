@@ -8,10 +8,12 @@ Usage:
     listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
+import argparse
 import asyncio
 import sys
+from argparse import Namespace
 
-from downloader import initialize_managers, parse_arguments, validate_and_download
+from downloader import initialize_managers, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import FILE, SESSION_LOG
 from helpers.file_utils import (
@@ -20,6 +22,17 @@ from helpers.file_utils import (
     write_file,
 )
 from helpers.general_utils import clear_terminal
+
+
+def parse_arguments() -> Namespace:
+    """Parse only the --disable-ui argument."""
+    parser = argparse.ArgumentParser(description="Acquire URL and other arguments.")
+    parser.add_argument(
+        "--disable-ui",
+        action="store_true",
+        help="Disable the user interface",
+    )
+    return parser.parse_args()
 
 
 async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
