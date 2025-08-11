@@ -21,6 +21,7 @@ DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files 
 FILE = "URLs.txt"                           # The name of the file containing the list
                                             # of URLs to process.
 SESSION_LOG = "session_log.txt"             # The file used to log errors.
+MIN_DISK_SPACE_GB = 3                       # Minimum free disk space (in GB) required.
 
 MAX_FILENAME_LEN = 120                      # The maximum length for a file name.
 MAX_WORKERS = 3                             # The maximum number of threads for

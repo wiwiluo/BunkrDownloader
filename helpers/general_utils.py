@@ -87,7 +87,7 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
     return None
 
 
-def format_directory_name(directory_name: str, directory_id: int | None) -> str | None:
+def format_directory_name(directory_name: str, directory_id: str | None) -> str | None:
     """Format a directory name by appending its ID in parentheses if the ID is provided.
 
     If the directory ID is `None`, only the directory name is returned.

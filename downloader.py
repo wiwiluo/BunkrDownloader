@@ -85,7 +85,7 @@ async def validate_and_download(
     args: Namespace | None = None,
 ) -> None:
     """Validate the provided URL, and initiate the download process."""
-    check_disk_space(live_manager=live_manager)
+    check_disk_space(live_manager)
 
     soup = await fetch_page(url)
     album_id = get_album_id(url) if check_url_type(url) else None

@@ -39,8 +39,8 @@ def get_host_page(url: str) -> str:
 def change_domain_to_cr(url: str) -> str:
     """Replace the domain of the given URL with 'bunkr.cr'.
 
-    This is useful for retrying requests using an alternative domain (e.g., when
-    the original domain is blocked or returns a 403 error).
+    This is useful for retrying requests using an alternative domain (e.g., when the
+    original domain is blocked or returns a 403 error).
     """
     parsed_url = urlparse(url)
     new_parsed_url = parsed_url._replace(netloc="bunkr.cr")
@@ -67,9 +67,9 @@ def check_url_type(url: str) -> bool:
 def get_identifier(url: str, soup: BeautifulSoup | None = None) -> str:
     """Extract the identifier from the provided URL.
 
-    This function determines if the given URL corresponds to an album. If it is,
-    it returns the album ID. If not, it returns the last part of the URL (usually
-    the individual item identifier).
+    This function determines if the given URL corresponds to an album. If it is, it
+    returns the album ID. If not, it returns the last part of the URL (usually the
+    individual item identifier).
     """
     decoded_url = unquote(url)
 

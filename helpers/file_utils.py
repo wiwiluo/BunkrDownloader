@@ -13,7 +13,7 @@ from pathlib import Path
 
 from helpers.managers.live_manager import LiveManager
 
-from .config import SESSION_LOG
+from .config import MIN_DISK_SPACE_GB, SESSION_LOG
 
 
 def read_file(filename: str) -> list[str]:
@@ -55,16 +55,17 @@ def get_root_path() -> str:
     if platform.system() == "Windows":
         return os.path.splitdrive(cwd)[0] + "\\"
 
-    return cwd  # Use actual working directory
+    # Use actual working directory
+    return cwd
 
 
-def check_disk_space(live_manager: LiveManager, min_space: int = 3) -> None:
+def check_disk_space(live_manager: LiveManager) -> None:
     """Check if the available disk space is greater than or equal to `min_space` GB."""
     root_path = get_root_path()
     _, _, free_space = shutil.disk_usage(root_path)
-    free_space_gb = free_space / (1024 ** 3)
+    free_space_gb = free_space / (1024**3)
 
-    if free_space_gb < min_space:
+    if free_space_gb < MIN_DISK_SPACE_GB:
         live_manager.update_log(
             "Insufficient disk space",
             f"Only {free_space_gb:.2f} GB available on the disk. "
