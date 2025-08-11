@@ -37,16 +37,6 @@ def write_on_session_log(content: str) -> None:
         file.write(f"{content}\n")
 
 
-def get_root_path() -> str:
-    """Return the root path depending on the operating system."""
-    if platform.system() == "Windows":
-        # Use the system drive, e.g., "C:\\"
-        return os.environ.get("SYSTEMDRIVE", "C:") + "\\"
-
-    # For Linux and macOS
-    return "/"
-
-
 def check_python_version(min_version: tuple[int, int] = (3, 10)) -> None:
     """Check if the current Python version meets the minimum requirement."""
     current_version = sys.version_info
@@ -57,6 +47,15 @@ def check_python_version(min_version: tuple[int, int] = (3, 10)) -> None:
         )
         logging.warning(log_message)
         sys.exit(1)
+
+
+def get_root_path() -> str:
+    """Return the filesystem root for the current working directory."""
+    cwd = Path.cwd()
+    if platform.system() == "Windows":
+        return os.path.splitdrive(cwd)[0] + "\\"
+
+    return cwd  # Use actual working directory
 
 
 def check_disk_space(live_manager: LiveManager, min_space: int = 3) -> None:
