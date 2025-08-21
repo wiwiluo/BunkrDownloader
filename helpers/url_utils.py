@@ -6,6 +6,7 @@ extracting relevant identifiers for albums or videos.
 
 from __future__ import annotations
 
+import contextlib
 import html
 import logging
 import re
@@ -122,18 +123,30 @@ def get_media_slug(url: str, soup: BeautifulSoup) -> str:
 def get_album_name(soup: BeautifulSoup) -> str | None:
     """Extract the album name from the HTML of a page.
 
-    If the album name cannot be found, a message is printed, and `None` is returned.
+    Handles potential mojibake issues (UTF-8 decoded as Latin-1).
+    If the album name cannot be found, returns None.
     """
     name_container = soup.find(
         "div",
         {"class": "text-subs font-semibold flex text-base sm:text-lg"},
     )
 
-    if name_container:
-        album_name = name_container.find("h1").get_text(strip=True)
-        return html.unescape(album_name)
+    if not name_container:
+        return None
 
-    return None
+    raw_album_name = name_container.find("h1").get_text(strip=True)
+    unescaped_album_name = html.unescape(raw_album_name)
+
+    # Attempt to fix mojibake (UTF-8 bytes mis-decoded as Latin-1)
+    # If encoding/decoding fails, keep the decoded version
+    with contextlib.suppress(UnicodeEncodeError, UnicodeDecodeError):
+        fixed_album_name = unescaped_album_name.encode("latin1").decode("utf-8")
+
+    # Only replace if the repaired string differs
+    if fixed_album_name != unescaped_album_name:
+        return fixed_album_name
+
+    return unescaped_album_name
 
 
 def get_item_type(item_page: str) -> str | None:

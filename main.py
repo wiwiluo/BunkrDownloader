@@ -15,7 +15,7 @@ from argparse import Namespace
 
 from downloader import initialize_managers, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
-from helpers.config import FILE, SESSION_LOG
+from helpers.config import SESSION_LOG, URLS_FILE
 from helpers.file_utils import (
     check_python_version,
     read_file,
@@ -64,11 +64,11 @@ async def main() -> None:
     args = parse_arguments()
 
     # Read and process URLs
-    urls = read_file(FILE)
+    urls = read_file(URLS_FILE)
     await process_urls(urls, disable_ui=args.disable_ui)
 
     # Clear URLs file
-    write_file(FILE)
+    write_file(URLS_FILE)
 
 
 if __name__ == "__main__":

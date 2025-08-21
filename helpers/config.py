@@ -18,7 +18,7 @@ BUNKR_API = "https://bunkr.cr/api/vs"       # The API for retrieving encryption 
 
 DOWNLOAD_FOLDER = "Downloads"               # The folder where downloaded files will be
                                             # stored.
-FILE = "URLs.txt"                           # The name of the file containing the list
+URLS_FILE = "URLs.txt"                      # The name of the file containing the list
                                             # of URLs to process.
 SESSION_LOG = "session_log.txt"             # The file used to log errors.
 MIN_DISK_SPACE_GB = 3                       # Minimum free disk space (in GB) required.
@@ -65,8 +65,7 @@ HTTP_STATUS_SERVER_DOWN = 521
 # Headers used for general HTTP requests.
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) "
-        "Gecko/20100101 Firefox/136.0"
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
     ),
 }
 

@@ -52,6 +52,7 @@ async def handle_download_process(
     host_page = get_host_page(url)
     identifier = get_identifier(url, soup=soup)
 
+    # Album download
     if check_url_type(url):
         item_pages = extract_item_pages(soup, host_page)
         album_downloader = AlbumDownloader(
@@ -61,12 +62,13 @@ async def handle_download_process(
         )
         await album_downloader.download_album()
 
+    # Single item download
     else:
         download_link, filename = await get_download_info(url, soup)
         live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
-        downloader = MediaDownloader(
+        media_downloader = MediaDownloader(
             session_info=session_info,
             download_info=DownloadInfo(
                 download_link=download_link,
@@ -75,7 +77,7 @@ async def handle_download_process(
             ),
             live_manager=live_manager,
         )
-        downloader.download()
+        media_downloader.download()
 
 
 async def validate_and_download(
