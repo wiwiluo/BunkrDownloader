@@ -36,7 +36,6 @@ def save_file_with_progress(
 
     # Create a temporary download path with the .temp extension
     temp_download_path = Path(download_path).with_suffix(".temp")
-
     chunk_size = get_chunk_size(file_size)
     total_downloaded = 0
 

@@ -85,5 +85,4 @@ async def get_download_info(item_url: str, item_soup: BeautifulSoup) -> tuple:
         get_url_based_filename(item_download_link) if item_download_link else None
     )
     formatted_item_filename = format_item_filename(item_filename, url_based_filename)
-
     return item_download_link, formatted_item_filename

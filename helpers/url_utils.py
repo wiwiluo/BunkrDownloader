@@ -21,10 +21,10 @@ import requests
 
 from .config import (
     BUNKR_API,
-    HTTP_STATUS_OK,
     MEDIA_SLUG_REGEX,
     URL_TYPE_MAPPING,
     VALID_SLUG_REGEX,
+    HTTPStatus,
 )
 
 if TYPE_CHECKING:
@@ -137,8 +137,8 @@ def get_album_name(soup: BeautifulSoup) -> str | None:
     raw_album_name = name_container.find("h1").get_text(strip=True)
     unescaped_album_name = html.unescape(raw_album_name)
 
-    # Attempt to fix mojibake (UTF-8 bytes mis-decoded as Latin-1)
-    # If encoding/decoding fails, keep the decoded version
+    # Attempt to fix mojibake (UTF-8 bytes mis-decoded as Latin-1). If encoding/decoding
+    # fails, keep the decoded version
     with contextlib.suppress(UnicodeEncodeError, UnicodeDecodeError):
         fixed_album_name = unescaped_album_name.encode("latin1").decode("utf-8")
 
@@ -152,7 +152,7 @@ def get_album_name(soup: BeautifulSoup) -> str | None:
 def get_item_type(item_page: str) -> str | None:
     """Extract the type of item (album or single file) from the item page URL."""
     try:
-        return item_page.split("/")[-2]
+        return item_page.rstrip("/").split("/")[-2]
 
     except AttributeError:
         log_message = f"Error extracting the item type from {item_page}"
@@ -165,7 +165,7 @@ def get_url_based_filename(item_download_link: str) -> str:
     """Extract the filename from a download link by removing any directory structure."""
     parsed_url = urlparse(item_download_link)
     # The download link path contains the filename, preceded by a '/'
-    return parsed_url.path.split("/")[-1]
+    return parsed_url.path.rstrip("/").split("/")[-1]
 
 
 def get_api_response(
@@ -178,20 +178,21 @@ def get_api_response(
     try:
         with requests.Session() as session:
             response = session.post(BUNKR_API, json={"slug": slug})
-            if response.status_code != HTTP_STATUS_OK:
+
+            if response.status_code != HTTPStatus.OK:
                 log_message = f"Failed to fetch encryption data for slug '{slug}'"
                 logging.warning(log_message)
                 return None
-
-        return response.json()
 
     except requests.RequestException as req_err:
         log_message = f"Error while requesting encryption data for '{slug}': {req_err}"
         logging.exception(log_message)
         return None
 
+    return response.json()
 
-def decrypt_url(api_response: dict[str, bool | str | int]) -> str:
+
+def decrypt_url(api_response: dict[str, bool | str | int]) -> str | None:
     """Decrypt an encrypted URL using a time-based secret key."""
     try:
         timestamp = api_response["timestamp"]
@@ -200,7 +201,7 @@ def decrypt_url(api_response: dict[str, bool | str | int]) -> str:
     except KeyError as key_err:
         log_message = f"Missing required encryption data field: {key_err}"
         logging.exception(log_message)
-        return ""
+        return None
 
     # Generate the secret key based on the timestamp
     time_key = floor(timestamp / 3600)

@@ -63,7 +63,7 @@ def check_disk_space(live_manager: LiveManager) -> None:
     """Check if the available disk space is greater than or equal to `min_space` GB."""
     root_path = get_root_path()
     _, _, free_space = shutil.disk_usage(root_path)
-    free_space_gb = free_space / (1024**3)
+    free_space_gb = free_space / (1024 ** 3)
 
     if free_space_gb < MIN_DISK_SPACE_GB:
         live_manager.update_log(

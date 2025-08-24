@@ -16,14 +16,15 @@ def fetch_page(url: str) -> BeautifulSoup | None:
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
-        return BeautifulSoup(response.text, "html.parser")
 
     except requests.RequestException:
         logging.exception("Error occurred while making the request.")
         return None
 
+    return BeautifulSoup(response.text, "html.parser")
 
-def get_bunkr_status() -> dict[str, str]:
+
+def get_bunkr_status() -> dict[str, str] | None:
     """Fetch the status of servers from the status page and returns a dictionary."""
     soup = fetch_page(STATUS_PAGE)
     bunkr_status = {}
@@ -46,7 +47,7 @@ def get_bunkr_status() -> dict[str, str]:
     except AttributeError as attr_err:
         log_message = f"Error extracting server data: {attr_err}"
         logging.exception(log_message)
-        return {}
+        return None
 
     return bunkr_status
 

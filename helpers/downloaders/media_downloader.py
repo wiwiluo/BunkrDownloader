@@ -17,9 +17,8 @@ from requests import RequestException
 from helpers.bunkr_utils import mark_subdomain_as_offline, subdomain_is_offline
 from helpers.config import (
     DOWNLOAD_HEADERS,
-    HTTP_STATUS_BAD_GATEWAY,
-    HTTP_STATUS_SERVER_DOWN,
     DownloadInfo,
+    HTTPStatus,
     SessionInfo,
 )
 from helpers.file_utils import write_on_session_log
@@ -143,7 +142,7 @@ class MediaDownloader:
         """Handle exceptions during the request and manages retries."""
         is_server_down = (
             req_err.response is None
-            or req_err.response.status_code == HTTP_STATUS_SERVER_DOWN
+            or req_err.response.status_code == HTTPStatus.SERVER_DOWN
         )
         if is_server_down:
             # Mark the subdomain as offline and exit the loop
@@ -169,7 +168,7 @@ class MediaDownloader:
                 time.sleep(delay)
                 return True
 
-        if req_err.response.status_code == HTTP_STATUS_BAD_GATEWAY:
+        if req_err.response.status_code == HTTPStatus.BAD_GATEWAY:
             self.live_manager.update_log(
                 "Server error",
                 f"Bad gateway for {self.download_info.filename}.",

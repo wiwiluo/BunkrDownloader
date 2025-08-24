@@ -23,9 +23,9 @@ from requests import Response
 from .config import (
     DOWNLOAD_FOLDER,
     DOWNLOAD_HEADERS,
-    HTTP_STATUS_FORBIDDEN,
-    HTTP_STATUS_SERVER_DOWN,
+    FETCH_ERROR_MESSAGES,
     MAX_FILENAME_LEN,
+    HTTPStatus,
 )
 from .file_utils import write_on_session_log
 from .url_utils import change_domain_to_cr
@@ -39,22 +39,17 @@ def validate_download_link(download_link: str) -> bool:
     except requests.RequestException:
         return False
 
-    return response.status_code != HTTP_STATUS_SERVER_DOWN
+    return response.status_code != HTTPStatus.SERVER_DOWN
 
 
 async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
     """Fetch the HTML content of a page at the given URL, with retry logic."""
     tried_cr = False
-    error_messages = {
-        500: f"Internal server error when fetching {url}",
-        502: f"Bad gateway for {url}, probably offline",
-        403: f"DDoSGuard blocked the request to {url}",
-    }
 
     def handle_response(response: Response) -> BeautifulSoup | None:
         """Process the HTTP response and handles specific status codes."""
-        if response.status_code in error_messages:
-            log_message = f"{error_messages[response.status_code]}, check the log file"
+        if response.status_code in FETCH_ERROR_MESSAGES:
+            log_message = FETCH_ERROR_MESSAGES[response.status_code].format(url=url)
             logging.exception(log_message)
             write_on_session_log(url)
             return None
@@ -64,21 +59,23 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
     for attempt in range(retries):
         try:
             response = requests.Session().get(url, timeout=40)
-            if response.status_code == HTTP_STATUS_FORBIDDEN and not tried_cr:
+            if response.status_code == HTTPStatus.FORBIDDEN and not tried_cr:
                 tried_cr = True
                 url = change_domain_to_cr(url)
-                continue  # retry immediately with .cr
+                continue  # Retry immediately with .cr
 
             response.raise_for_status()
             return handle_response(response)
 
+        # Connection dropped unexpectedly by the server
         except RemoteDisconnected:
             logging.exception("Remote end closed connection without response.")
             if attempt < retries - 1:
                 # Add jitter to avoid a retry storm
                 delay = 2 ** (attempt + 1) + random.uniform(1, 2)  # noqa: S311
-                asyncio.sleep(delay)
+                await asyncio.sleep(delay)
 
+        # Catch-all for request-related errors
         except requests.RequestException as req_err:
             log_message = f"Request error for {url}: {req_err}"
             logging.exception(log_message)
@@ -121,11 +118,14 @@ def create_download_directory(directory_name: str) -> str:
 
     try:
         download_path.mkdir(parents=True, exist_ok=True)
-        return str(download_path)
 
-    except OSError:
-        logging.exception("Error creating 'Downloads' directory.")
+    except OSError as os_err:
+        log_message = f"Error creating 'Downloads' directory: {os_err}"
+        logging.exception(log_message)
         sys.exit(1)
+
+    return str(download_path)
+
 
 def remove_invalid_characters(text: str) -> str:
     """Remove invalid characters from the input string.
