@@ -72,8 +72,10 @@ class HTTPStatus(IntEnum):
 
     OK = 200
     FORBIDDEN = 403
+    TOO_MANY_REQUESTS = 429
     INTERNAL_ERROR = 500
     BAD_GATEWAY = 502
+    SERVICE_UNAVAILABLE = 503
     SERVER_DOWN = 521
 
 # Mapping of HTTP error codes to human-readable fetch error messages.

@@ -48,7 +48,7 @@ class AlbumDownloader:
 
             # Download item
             if item_download_link:
-                downloader = MediaDownloader(
+                media_downloader = MediaDownloader(
                     session_info=self.session_info,
                     download_info=DownloadInfo(
                         download_link=item_download_link,
@@ -58,35 +58,9 @@ class AlbumDownloader:
                     live_manager=self.live_manager,
                 )
 
-                failed_download = await asyncio.to_thread(downloader.download)
+                failed_download = await asyncio.to_thread(media_downloader.download)
                 if failed_download:
                     self.failed_downloads.append(failed_download)
-
-    async def retry_failed_download(
-        self,
-        task: int,
-        filename: str,
-        download_link: str,
-    ) -> None:
-        """Handle failed downloads and retries them."""
-        downloader = MediaDownloader(
-            session_info=self.session_info,
-            download_info=DownloadInfo(download_link, filename, task),
-            live_manager=self.live_manager,
-            retries=1,  # Retry once for failed downloads
-        )
-        # Run the synchronous download function in a separate thread
-        await asyncio.to_thread(downloader.download)
-
-    async def process_failed_downloads(self) -> None:
-        """Process any failed downloads after the initial attempt."""
-        for data in self.failed_downloads:
-            await self.retry_failed_download(
-                data["id"],
-                data["filename"],
-                data["download_link"],
-            )
-        self.failed_downloads.clear()
 
     async def download_album(self, max_workers: int = MAX_WORKERS) -> None:
         """Handle the album download."""
@@ -106,4 +80,31 @@ class AlbumDownloader:
 
         # If there are failed downloads, process them after all downloads are complete
         if self.failed_downloads:
-            await self.process_failed_downloads()
+            await self._process_failed_downloads()
+
+    # Private methods
+    async def _retry_failed_download(
+        self,
+        task: int,
+        filename: str,
+        download_link: str,
+    ) -> None:
+        """Handle failed downloads and retries them."""
+        media_downloader = MediaDownloader(
+            session_info=self.session_info,
+            download_info=DownloadInfo(download_link, filename, task),
+            live_manager=self.live_manager,
+            retries=1,  # Retry once for failed downloads
+        )
+        # Run the synchronous download function in a separate thread
+        await asyncio.to_thread(media_downloader.download)
+
+    async def _process_failed_downloads(self) -> None:
+        """Process any failed downloads after the initial attempt."""
+        for data in self.failed_downloads:
+            await self._retry_failed_download(
+                data["id"],
+                data["filename"],
+                data["download_link"],
+            )
+        self.failed_downloads.clear()
