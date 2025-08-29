@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from helpers.general_utils import fetch_page
 from helpers.url_utils import (
     decrypt_url,
     get_api_response,
@@ -16,7 +18,27 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
 
-def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str]:
+def extract_next_album_pages(initial_soup: BeautifulSoup, url: str) -> list[str] | None:
+    """Extract pagination links for subsequent album pages from an HTML document."""
+    pagination_nav = initial_soup.find(
+        "nav",
+        {
+            "class": "pagination",
+            "style": "margin-top:1rem",
+        },
+    )
+    if pagination_nav is None:
+        return None
+
+    pagination_text = pagination_nav.get_text()
+    page_ids = re.findall(r"\d+", pagination_text)
+
+    # Discard the first ID since it has already been processed
+    next_page_ids = page_ids[1:]
+    return [f"{url}?page={page_id}" for page_id in next_page_ids]
+
+
+def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str] | None:
     """Extract individual item page URLs from the parsed HTML content."""
     try:
         items = soup.find_all(
@@ -33,11 +55,29 @@ def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str]:
         logging.exception("Error extracting item pages.")
 
     logging.exception("No item pages found in the HTML content.")
-    return []
+    return None
+
+
+async def extract_all_album_item_pages(
+    initial_soup: BeautifulSoup, host_page: str, url: str,
+) -> list[str]:
+    """Collect item page links from an album, including pagination."""
+    # Extract item pages from the initial soup
+    item_pages = extract_item_pages(initial_soup, host_page)
+    next_album_pages = extract_next_album_pages(initial_soup, url) or []
+
+    if next_album_pages is not None:
+        for next_page in next_album_pages:
+            next_page_soup = await fetch_page(next_page)
+            next_item_pages = extract_item_pages(next_page_soup, host_page)
+            item_pages.extend(next_item_pages)
+
+    return item_pages
 
 
 async def get_item_download_link(
-    item_url: str, soup: BeautifulSoup | None = None,
+    item_url: str,
+    soup: BeautifulSoup | None = None,
 ) -> str:
     """Retrieve the download link for a specific item from its HTML content."""
     api_response = get_api_response(item_url, soup=soup)

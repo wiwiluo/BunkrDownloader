@@ -18,7 +18,10 @@ from requests.exceptions import RequestException, Timeout
 
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import AlbumInfo, DownloadInfo, SessionInfo
-from helpers.crawlers.crawler_utils import extract_item_pages, get_download_info
+from helpers.crawlers.crawler_utils import (
+    extract_all_album_item_pages,
+    get_download_info,
+)
 from helpers.downloaders.album_downloader import AlbumDownloader, MediaDownloader
 from helpers.file_utils import check_disk_space, check_python_version
 from helpers.general_utils import (
@@ -45,16 +48,16 @@ if TYPE_CHECKING:
 async def handle_download_process(
     session_info: SessionInfo,
     url: str,
-    soup: BeautifulSoup,
+    initial_soup: BeautifulSoup,
     live_manager: LiveManager,
 ) -> None:
     """Handle the download process for a Bunkr album or a single item."""
     host_page = get_host_page(url)
-    identifier = get_identifier(url, soup=soup)
+    identifier = get_identifier(url, soup=initial_soup)
 
     # Album download
     if check_url_type(url):
-        item_pages = extract_item_pages(soup, host_page)
+        item_pages = await extract_all_album_item_pages(initial_soup, host_page, url)
         album_downloader = AlbumDownloader(
             session_info=session_info,
             album_info=AlbumInfo(album_id=identifier, item_pages=item_pages),
@@ -64,7 +67,7 @@ async def handle_download_process(
 
     # Single item download
     else:
-        download_link, filename = await get_download_info(url, soup)
+        download_link, filename = await get_download_info(url, initial_soup)
         live_manager.add_overall_task(identifier, num_tasks=1)
         task = live_manager.add_task()
 
