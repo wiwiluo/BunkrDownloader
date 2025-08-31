@@ -44,7 +44,7 @@ from helpers.url_utils import (
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
-from helpers.crawlers.crawler_utils import get_api_response
+
 async def handle_download_process(
     session_info: SessionInfo,
     url: str,
