@@ -38,9 +38,22 @@ VALID_SLUG_REGEX = r"^[a-zA-Z0-9_-]+$"                       # Validate media sl
 # ============================
 # UI & Table Settings
 # ============================
-COLUMNS_SEPARATOR = "•"  # Visual separator used between progress bar columns.
+PROGRESS_COLUMNS_SEPARATOR = "•"  # Visual separator used between progress bar columns.
 
-# Constant defining the minimum width for each column.
+# Colors used for the progress manager UI elements
+PROGRESS_MANAGER_COLORS = {
+    "title_color": "light_cyan3",           # Title color for progress panels.
+    "overall_border_color": "bright_blue",  # Border color for overall progress panel.
+    "task_border_color": "medium_purple"    # Border color for task progress panel.
+}
+
+# Colors used for the log manager UI elements
+LOG_MANAGER_COLORS = {
+    "title_color": "light_cyan3",  # Title color for log panel.
+    "border_color": "cyan",        # Border color for log panel.
+}
+
+# Constant defining the minimum width for each column of the log table.
 MIN_COLUMN_WIDTHS = {
     "Timestamp": 10,
     "Event": 15,
@@ -50,8 +63,8 @@ MIN_COLUMN_WIDTHS = {
 # ============================
 # Download Settings
 # ============================
-MAX_FILENAME_LEN = 120   # The maximum length for a file name.
-MAX_WORKERS = 3          # The maximum number of threads for concurrent downloads.
+MAX_FILENAME_LEN = 120  # The maximum length for a file name.
+MAX_WORKERS = 3         # The maximum number of threads for concurrent downloads.
 
 # Mapping of URL identifiers to a boolean for album (True) vs single file (False).
 URL_TYPE_MAPPING = {"a": True, "f": False, "v": False}

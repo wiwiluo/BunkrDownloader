@@ -19,7 +19,7 @@ from rich.box import SIMPLE
 from rich.panel import Panel
 from rich.table import Table
 
-from helpers.config import MIN_COLUMN_WIDTHS
+from helpers.config import LOG_MANAGER_COLORS, MIN_COLUMN_WIDTHS
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -30,16 +30,14 @@ class LoggerTable:
     def __init__(
         self,
         max_rows: int = 4,
-        title_color: str = "light_cyan3",
-        border_style: str = "cyan",
     ) -> None:
         """Initialize the table with a circular buffer for scrolling rows."""
         # Circular buffer for scrolling rows
         self.row_buffer = deque(maxlen=max_rows)
 
         # Create the table with initial setup
-        self.title_color = title_color
-        self.border_style = border_style
+        self.title_color = LOG_MANAGER_COLORS["title_color"]
+        self.border_style = LOG_MANAGER_COLORS["border_color"]
         self.table = self._create_table()
 
     def log(self, event: str, details: str, *, disable_ui: bool = False) -> None:
@@ -53,13 +51,14 @@ class LoggerTable:
             log_message = f"[{timestamp}] Event: {event} | Details: {details}"
             logging.info(log_message)
 
-    def render_log_panel(self) -> Panel:
+    def render_log_panel(self, panel_width: int = 40) -> Panel:
         """Render the log panel containing the log table."""
         log_table = self._render_table()
         return Panel.fit(
             log_table,
             title=f"[bold {self.title_color}]Log Messages",
             border_style=self.border_style,
+            width=2*panel_width,  # Log panel width is double the single table width
         )
 
     # Private methods
