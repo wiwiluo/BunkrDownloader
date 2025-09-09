@@ -7,8 +7,6 @@ monitoring task completion.
 from __future__ import annotations
 
 import shutil
-from collections import deque
-from dataclasses import dataclass, field
 
 from rich.panel import Panel
 from rich.progress import (
@@ -20,18 +18,12 @@ from rich.progress import (
 )
 from rich.table import Column, Table
 
-from helpers.config import PROGRESS_COLUMNS_SEPARATOR, PROGRESS_MANAGER_COLORS
+from helpers.config import (
+    PROGRESS_COLUMNS_SEPARATOR,
+    PROGRESS_MANAGER_COLORS,
+    ProgressConfig,
+)
 
-
-@dataclass
-class ProgressConfig:
-    """Configuration for progress bar settings."""
-
-    task_name: str
-    item_description: str
-    color: str = PROGRESS_MANAGER_COLORS["title_color"]
-    panel_width = 40
-    overall_buffer: deque = field(default_factory=lambda: deque(maxlen=5))
 
 class ProgressManager:
     """Manage and tracks the progress of multiple tasks.

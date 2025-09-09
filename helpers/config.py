@@ -6,7 +6,8 @@ into a single location.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
@@ -44,7 +45,7 @@ PROGRESS_COLUMNS_SEPARATOR = "•"  # Visual separator used between progress bar
 PROGRESS_MANAGER_COLORS = {
     "title_color": "light_cyan3",           # Title color for progress panels.
     "overall_border_color": "bright_blue",  # Border color for overall progress panel.
-    "task_border_color": "medium_purple"    # Border color for task progress panel.
+    "task_border_color": "medium_purple",   # Border color for task progress panel.
 }
 
 # Colors used for the log manager UI elements
@@ -148,3 +149,13 @@ class AlbumInfo:
 
     album_id: str
     item_pages: list[str]
+
+@dataclass
+class ProgressConfig:
+    """Configuration for progress bar settings."""
+
+    task_name: str
+    item_description: str
+    color: str = PROGRESS_MANAGER_COLORS["title_color"]
+    panel_width = 40
+    overall_buffer: deque = field(default_factory=lambda: deque(maxlen=5))
