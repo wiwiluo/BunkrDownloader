@@ -6,6 +6,7 @@ monitoring task completion.
 
 from __future__ import annotations
 
+import shutil
 from collections import deque
 
 from rich.panel import Panel
@@ -14,8 +15,11 @@ from rich.progress import (
     Progress,
     SpinnerColumn,
     TextColumn,
+    TimeRemainingColumn,
 )
 from rich.table import Column, Table
+
+from helpers.config import COLUMNS_SEPARATOR
 
 
 class ProgressManager:
@@ -36,7 +40,7 @@ class ProgressManager:
         self.item_description = item_description
         self.color = color
         self.overall_progress = self._create_progress_bar()
-        self.task_progress = self._create_progress_bar()
+        self.task_progress = self._create_progress_bar(show_time=True)
         self.num_tasks = 0
         self.overall_buffer = deque(maxlen=overall_buffer_size)
 
@@ -74,8 +78,11 @@ class ProgressManager:
         )
         self._update_overall_task(task_id)
 
-    def create_progress_table(self) -> Table:
+    def create_progress_table(self, min_panel_width: int = 30) -> Table:
         """Create a formatted progress table for tracking the download."""
+        terminal_width, _ = shutil.get_terminal_size()
+        panel_width = max(min_panel_width, terminal_width // 2)
+
         progress_table = Table.grid()
         progress_table.add_row(
             Panel.fit(
@@ -83,14 +90,14 @@ class ProgressManager:
                 title=f"[bold {self.color}]Overall Progress",
                 border_style="bright_blue",
                 padding=(1, 1),
-                width=40,
+                width=panel_width,
             ),
             Panel.fit(
                 self.task_progress,
                 title=f"[bold {self.color}]{self.task_name} Progress",
                 border_style="medium_purple",
                 padding=(1, 1),
-                width=40,
+                width=panel_width,
             ),
         )
         return progress_table
@@ -130,7 +137,9 @@ class ProgressManager:
         )
 
     @staticmethod
-    def _create_progress_bar(columns: list[Column] | None = None) -> Progress:
+    def _create_progress_bar(
+        columns: list[Column] | None = None, *, show_time: bool = False,
+    ) -> Progress:
         """Create and returns a progress bar for tracking download progress."""
         if columns is None:
             columns = [
@@ -138,4 +147,8 @@ class ProgressManager:
                 BarColumn(),
                 TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             ]
+
+        if show_time:
+            columns = [*columns, COLUMNS_SEPARATOR, TimeRemainingColumn()]
+
         return Progress("{task.description}", *columns)
