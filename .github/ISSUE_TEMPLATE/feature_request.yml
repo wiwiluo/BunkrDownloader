@@ -1,3 +1,9 @@
+name: Feature request
+description: Suggest an idea for this project
+title: "[FEATURE] <Enter a title for your feature here>"
+labels: [ "enhancement" ]
+assignees: [ Lysagxra ]
+
 body:
   - type: textarea
     id: feature-description
@@ -33,9 +39,3 @@ body:
       label: Additional context
       description: Add any other context or screenshots about the feature request here.
       placeholder: "Example: Here is a screenshot of the tool in action and how it could benefit from automatic updates."
-
-description: Suggest an idea for this project
-labels: [ "enhancement" ]
-assignees: [ Lysagxra ]
-title: "[FEATURE] <enter a title for your feature here>"
-name: Feature request

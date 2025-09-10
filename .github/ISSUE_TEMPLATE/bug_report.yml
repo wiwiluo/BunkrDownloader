@@ -1,4 +1,14 @@
+name: Bug report
+description: File a bug report
+title: "[BUG] <Enter a bug description here>"
+labels: [ "bug" ]
+assignees: [ Lysagxra ]
+
 body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this bug report!
+
   - type: markdown
     attributes:
       value: |
@@ -35,17 +45,30 @@ body:
     
     type: checkboxes
 
-  - id: environment
+  - id: operating-system
     attributes:
       label: Operating system
       description: What operating system, version are you working with?
-      placeholder: "Example: Windows 11"
-    
-    type: input
+      multiple: true
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other (Please specify)
+
+    type: dropdown
     
     validations:
       required: true
   
+  - id: other-os
+    attributes:
+      label: Please specify your operating system
+      description: If you selected "Other", please provide the exact operating system and version you're using.
+      placeholder: "Example: ChromeOS"
+  
+    type: input
+
   - id: python-version
     attributes:
       label: Python version
@@ -134,8 +157,13 @@ body:
 
     type: textarea
 
-description: File a bug report
-labels: [ "bug" ]
-assignees: [ Lysagxra ]
-title: "[BUG] <Enter a bug description here>"
-name: Bug report
+  - id: contact
+    attributes:
+      label: Contact details
+      description: How can we get in touch with you if we need more info?
+      placeholder: "Example: email@example.com"
+
+    type: input
+
+    validations:
+      required: false
