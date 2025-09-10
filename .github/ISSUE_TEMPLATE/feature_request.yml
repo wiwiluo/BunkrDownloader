@@ -5,6 +5,25 @@ labels: [ "enhancement" ]
 assignees: [ Lysagxra ]
 
 body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this feature request template!
+
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > 1. Make sure to check existing issues before creating a new one.
+        > 2. Update to the latest release of the tool before opening an issue.
+
+        > [!WARNING]
+        > Please write your request in English.
+        > Requests submitted in any other language will be marked as invalid.
+        > Thank you for your understanding and cooperation :)
+
+        You can download the latest version of the tool here:
+        https://github.com/Lysagxra/BunkrDownloader/releases
+
   - type: textarea
     id: feature-description
 
