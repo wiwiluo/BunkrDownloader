@@ -9,6 +9,7 @@
 - Downloads multiple files from an album concurrently.
 - Supports [batch downloading](https://github.com/Lysagxra/BunkrDownloader?tab=readme-ov-file#batch-download) via a list of URLs.
 - Supports [selective files downloading](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#selective-download) based on filename criteria.
+- Supports [custom download location](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#file-download-location).
 - Provides [minimal UI](https://github.com/Lysagxra/BunkrDownloader/tree/main?tab=readme-ov-file#disable-ui-for-notebooks) for notebook environments.
 - Provides progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
@@ -149,7 +150,21 @@ https://bunkr.fi/a/kVYLh49Q
 python3 main.py
 ```
 
-3. The downloaded files will be saved in the `Downloads` directory.
+## File Download Location
+
+If the `--custom-path <custom_path>` argument is used, the downloaded files will be saved in `<custom_path>/Downloads`. Otherwise, the files will be saved in a `Downloads` folder created within the script's directory
+
+### Usage
+
+```bash
+python3 main.py --custom-path <custom_path>
+```
+
+### Example
+
+```bash
+python3 main.py --custom-path /path/to/external/drive
+```
 
 ## Disable UI for Notebooks
 
