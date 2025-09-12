@@ -14,6 +14,7 @@ import sys
 from argparse import Namespace
 
 from downloader import (
+    add_custom_path_argument,
     add_disable_ui_argument,
     initialize_managers,
     validate_and_download,
@@ -31,19 +32,20 @@ from helpers.general_utils import clear_terminal
 def parse_arguments() -> Namespace:
     """Parse only the --disable-ui argument."""
     parser = argparse.ArgumentParser(description="Acquire URL and other arguments.")
+    add_custom_path_argument(parser)
     add_disable_ui_argument(parser)
     return parser.parse_args()
 
 
-async def process_urls(urls: list[str], *, disable_ui: bool = False) -> None:
+async def process_urls(urls: list[str], args: Namespace) -> None:
     """Validate and downloads items for a list of URLs."""
     bunkr_status = get_bunkr_status()
-    live_manager = initialize_managers(disable_ui=disable_ui)
+    live_manager = initialize_managers(disable_ui=args.disable_ui)
 
     try:
         with live_manager.live:
             for url in urls:
-                await validate_and_download(bunkr_status, url, live_manager)
+                await validate_and_download(bunkr_status, url, live_manager, args=args)
 
             live_manager.stop()
 
@@ -65,7 +67,7 @@ async def main() -> None:
 
     # Read and process URLs, ignoring empty lines
     urls = [url.strip() for url in read_file(URLS_FILE) if url.strip()]
-    await process_urls(urls, disable_ui=args.disable_ui)
+    await process_urls(urls, args)
 
     # Clear URLs file
     write_file(URLS_FILE)
