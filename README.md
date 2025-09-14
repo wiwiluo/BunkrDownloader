@@ -2,7 +2,7 @@
 
 > A Python Bunkr downloader that fetches images and videos from URLs. It supports both Bunkr albums and individual file URLs, logs issues, and enables concurrent downloads for efficiency.
 
-![Screenshot](https://github.com/Lysagxra/BunkrDownloader/blob/3bc786d91f2950fbc1df120b7ebbb6ff90e4e6fd/misc/DemoV2.gif)
+![Demo](https://github.com/Lysagxra/BunkrDownloader/blob/8d07aaa4fe4e5b438e9ccc75bf0b71c845df942d/assets/demo.gif)
 
 ## Features
 
@@ -22,17 +22,15 @@
 - `requests` - for HTTP requests
 - `rich` - for progress display in the terminal
 
-## Directory Structure
-
 <details>
 
-<summary>Expand Directory Structure</summary>
+<summary>Show directory structure</summary>
 
 ```
 project-root/
 ├── helpers/
 │ ├── crawlers/
-| | ├── api_utils.py         # Utilities for handling API requests and responses.
+| | ├── api_utils.py         # Utilities for handling API requests and responses
 │ │ └── crawler_utils.py     # Utilities for extracting media download links
 │ ├── downloaders/
 │ │ ├── album_downloader.py  # Manages the downloading of entire albums
