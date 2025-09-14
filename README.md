@@ -24,6 +24,10 @@
 
 ## Directory Structure
 
+<details>
+
+<summary>Expand Directory Structure</summary>
+
 ```
 project-root/
 ├── helpers/
@@ -47,6 +51,8 @@ project-root/
 ├── URLs.txt                 # Text file listing album URLs to be downloaded
 └── session_log.txt          # Log file for recording session details
 ```
+
+</details>
 
 ## Installation
 
