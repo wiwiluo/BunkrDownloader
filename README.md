@@ -32,6 +32,7 @@
 project-root/
 ├── helpers/
 │ ├── crawlers/
+| | ├── api_utils.py         # Utilities for handling API requests and responses.
 │ │ └── crawler_utils.py     # Utilities for extracting media download links
 │ ├── downloaders/
 │ │ ├── album_downloader.py  # Manages the downloading of entire albums
