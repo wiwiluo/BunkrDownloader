@@ -9,29 +9,31 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from argparse import ArgumentParser, Namespace
 from typing import TYPE_CHECKING
 
 from requests.exceptions import ConnectionError as RequestConnectionError
 from requests.exceptions import RequestException, Timeout
 
 from helpers.bunkr_utils import get_bunkr_status
-from helpers.config import AlbumInfo, DownloadInfo, SessionInfo
+from helpers.config import (
+    AlbumInfo,
+    DownloadInfo,
+    SessionInfo,
+    parse_arguments,
+)
 from helpers.crawlers.crawler_utils import (
     extract_all_album_item_pages,
     get_download_info,
 )
 from helpers.downloaders.album_downloader import AlbumDownloader, MediaDownloader
-from helpers.file_utils import check_disk_space, check_python_version
+from helpers.file_utils import create_download_directory, format_directory_name
 from helpers.general_utils import (
+    check_disk_space,
+    check_python_version,
     clear_terminal,
-    create_download_directory,
     fetch_page,
-    format_directory_name,
 )
-from helpers.managers.live_manager import LiveManager
-from helpers.managers.log_manager import LoggerTable
-from helpers.managers.progress_manager import ProgressManager
+from helpers.managers.live_manager import initialize_managers
 from helpers.url_utils import (
     check_url_type,
     get_album_id,
@@ -41,7 +43,11 @@ from helpers.url_utils import (
 )
 
 if TYPE_CHECKING:
+    from argparse import Namespace
+
     from bs4 import BeautifulSoup
+
+    from helpers.managers.live_manager import LiveManager
 
 
 async def handle_download_process(
@@ -112,55 +118,6 @@ async def validate_and_download(
     except (RequestConnectionError, Timeout, RequestException) as err:
         error_message = f"Error downloading from {url}: {err}"
         raise RuntimeError(error_message) from err
-
-
-def initialize_managers(*, disable_ui: bool = False) -> LiveManager:
-    """Initialize and return the managers for progress tracking and logging."""
-    progress_manager = ProgressManager(task_name="Album", item_description="File")
-    logger_table = LoggerTable()
-    return LiveManager(progress_manager, logger_table, disable_ui=disable_ui)
-
-
-def add_custom_path_argument(parser: ArgumentParser) -> None:
-    """Add the --custom-path argument to the provided argument parser."""
-    parser.add_argument(
-        "--custom-path",
-        type=str,
-        default=None,
-        help="The directory where the downloaded content will be saved.",
-    )
-
-
-def add_disable_ui_argument(parser: ArgumentParser) -> None:
-    """Add the --disable-ui argument to any parser."""
-    parser.add_argument(
-        "--disable-ui",
-        action="store_true",
-        help="Disable the user interface",
-    )
-
-
-def parse_arguments() -> Namespace:
-    """Parse command-line arguments."""
-    parser = ArgumentParser(description="Acquire URL and other arguments.")
-    parser.add_argument("url", type=str, help="The URL to process")
-    parser.add_argument(
-        "--ignore",
-        type=str,
-        nargs="+",
-        help="A list of substrings to match against filenames. "
-        "Files containing any of these substrings in their names will be skipped.",
-    )
-    parser.add_argument(
-        "--include",
-        type=str,
-        nargs="+",
-        help="A list of substrings to match against filenames. "
-        "Files containing any of these substrings in their names will be downloaded.",
-    )
-    add_disable_ui_argument(parser)
-    add_custom_path_argument(parser)
-    return parser.parse_args()
 
 
 async def main() -> None:

@@ -1,40 +1,23 @@
 """Main module to read Bunkr URLs from a file, and download from them.
 
-This module manages the entire download process by leveraging asynchronous
-operations, allowing for efficient handling of multiple URLs.
+This module manages the entire download process by leveraging asynchronous operations,
+allowing for efficient handling of multiple URLs.
 
 Usage:
-    To run the module, execute the script directly. It will process URLs
-    listed in 'URLs.txt' and log the session activities in 'session_log.txt'.
+    To run the module, execute the script directly. It will process URLs listed in
+    'URLs.txt' and log the session activities in 'session_log.txt'.
 """
 
-import argparse
 import asyncio
 import sys
 from argparse import Namespace
 
-from downloader import (
-    add_custom_path_argument,
-    add_disable_ui_argument,
-    initialize_managers,
-    validate_and_download,
-)
+from downloader import parse_arguments, validate_and_download
 from helpers.bunkr_utils import get_bunkr_status
 from helpers.config import SESSION_LOG, URLS_FILE
-from helpers.file_utils import (
-    check_python_version,
-    read_file,
-    write_file,
-)
-from helpers.general_utils import clear_terminal
-
-
-def parse_arguments() -> Namespace:
-    """Parse only the --disable-ui argument."""
-    parser = argparse.ArgumentParser(description="Acquire URL and other arguments.")
-    add_custom_path_argument(parser)
-    add_disable_ui_argument(parser)
-    return parser.parse_args()
+from helpers.file_utils import read_file, write_file
+from helpers.general_utils import check_python_version, clear_terminal
+from helpers.managers.live_manager import initialize_managers
 
 
 async def process_urls(urls: list[str], args: Namespace) -> None:
@@ -62,8 +45,8 @@ async def main() -> None:
     # Check Python version
     check_python_version()
 
-    # Parse arguments to get disable_ui flag
-    args = parse_arguments()
+    # Parse arguments
+    args = parse_arguments(common_only=True)
 
     # Read and process URLs, ignoring empty lines
     urls = [url.strip() for url in read_file(URLS_FILE) if url.strip()]
