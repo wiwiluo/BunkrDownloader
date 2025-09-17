@@ -4,165 +4,441 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bunkr URL解析器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --error-color: #f5222d;
+            --warning-color: #faad14;
+            --text-color: #262626;
+            --text-secondary: #595959;
+            --border-color: #d9d9d9;
+            --background-base: #f0f2f5;
+            --card-background: #ffffff;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: var(--font-family);
+            background-color: var(--background-base);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
         }
+
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 800px;
+            padding: 32px;
+            margin: 20px;
         }
+
         h1 {
-            color: #333;
+            color: var(--text-color);
             text-align: center;
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 28px;
         }
+
+        .description {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 15px;
+        }
+
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
+
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
         }
+
         input[type="url"] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             font-size: 16px;
-            box-sizing: border-box;
+            transition: all 0.3s;
+            outline: none;
         }
+
+        input[type="url"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        input[type="url"]:hover {
+            border-color: var(--primary-hover);
+        }
+
         button {
-            background-color: #4CAF50;
+            background-color: var(--primary-color);
             color: white;
             padding: 12px 24px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
             width: 100%;
+            font-weight: 500;
+            transition: all 0.3s;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         button:hover {
-            background-color: #45a049;
+            background-color: var(--primary-hover);
         }
+
         button:disabled {
-            background-color: #cccccc;
+            background-color: rgba(24, 144, 255, 0.4);
             cursor: not-allowed;
         }
+
         .result {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #f9f9f9;
+            margin-top: 24px;
+            border-radius: 6px;
+            overflow: hidden;
         }
+
         .error {
-            background-color: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
+            background-color: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: var(--error-color);
         }
+
         .success {
-            background-color: #e8f5e9;
-            border: 1px solid #c8e6c9;
+            background-color: #f6ffed;
+            border: 1px solid #b7eb8f;
         }
+
+        .result-header {
+            padding: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .download-item {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            background: white;
+            transition: background 0.3s;
         }
+
+        .download-item:hover {
+            background: #fafafa;
+        }
+
         .filename {
-            font-weight: bold;
-            color: #333;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+
         .download-link {
-            color: #1976d2;
+            color: var(--primary-color);
             word-break: break-all;
+            margin-bottom: 12px;
+            font-size: 14px;
         }
+
         .loading {
             text-align: center;
-            color: #666;
+            color: var(--text-secondary);
+            padding: 40px 20px;
+        }
+
+        .loading i {
+            margin-right: 8px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .copy-btn {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            width: auto;
+            height: auto;
+        }
+
+        .copy-btn:hover {
+            background-color: rgba(24, 144, 255, 0.1);
+        }
+
+        .copy-btn.copied {
+            background-color: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        .done-btn {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            width: auto;
+            height: auto;
+        }
+
+        .done-btn:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .done-btn.done {
+            background-color: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        .done-item .filename,
+        .done-item .download-link {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background-color: #fafafa;
+            border-top: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .icon-spin {
+            animation: icon-spin 1s infinite linear;
+        }
+
+        @keyframes icon-spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+                margin: 16px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Bunkr URL解析器</h1>
+        <h1><i class="fas fa-link" style="margin-right: 12px;"></i>Bunkr URL解析器</h1>
+        <p class="description">输入Bunkr专辑或媒体页面URL，提取可直接下载的链接</p>
+
         <form id="parseForm">
             <div class="form-group">
-                <label for="url">请输入Bunkr专辑或媒体页面URL:</label>
+                <label for="url">Bunkr URL</label>
                 <input type="url" id="url" name="url" required placeholder="例如: https://bunkr.si/a/PUK068QE">
             </div>
-            <button type="submit" id="submitBtn">解析URL</button>
+            <button type="submit" id="submitBtn">
+                <i class="fas fa-search" style="margin-right: 8px;"></i>解析URL
+            </button>
         </form>
-        
+
         <div id="result"></div>
     </div>
 
     <script>
         document.getElementById('parseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const url = document.getElementById('url').value;
             const submitBtn = document.getElementById('submitBtn');
             const resultDiv = document.getElementById('result');
-            
+
             // 显示加载状态
             submitBtn.disabled = true;
-            submitBtn.textContent = '解析中...';
-            resultDiv.innerHTML = '<div class="loading">正在解析URL，请稍候...</div>';
-            
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch icon-spin"></i> 解析中...';
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-circle-notch icon-spin"></i> 正在解析URL，请稍候...
+                </div>
+            `;
+
             try {
                 const response = await fetch('/parse', {
                     method: 'POST',
                     body: new FormData(this)
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.error) {
                     resultDiv.innerHTML = `
                         <div class="result error">
-                            <h3>错误</h3>
-                            <p>${data.error}</p>
+                            <div class="result-header">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>错误</span>
+                            </div>
+                            <div class="download-item">${data.error}</div>
                         </div>
                     `;
                 } else if (data.download_info_list && data.download_info_list.length > 0) {
-                    let html = '<div class="result success"><h3>解析结果</h3>';
-                    data.download_info_list.forEach(item => {
+                    let html = `
+                        <div class="result success">
+                            <div class="result-header">
+                                <i class="fas fa-check-circle"></i>
+                                <span>解析成功</span>
+                            </div>
+                    `;
+
+                    data.download_info_list.forEach((item, index) => {
+                        const fullUrl = `${item.download_link}?n=${item.filename}`;
                         html += `
-                            <div class="download-item">
-                                <div class="filename">${item.filename}</div>
-                                <div class="download-link">${item.download_link}</div>
+                            <div class="download-item" id="item-${index}">
+                                <div class="filename">
+                                    <i class="far fa-file"></i>
+                                    <span>${item.filename}</span>
+                                </div>
+                                <div class="download-link">${fullUrl}</div>
+                                <div class="action-buttons">
+                                    <button class="copy-btn" onclick="copyToClipboard('${fullUrl}', this)">
+                                        <i class="far fa-copy"></i> 复制链接
+                                    </button>
+                                    <button class="done-btn" onclick="markAsDone(${index}, this)">
+                                        <i class="far fa-check-circle"></i> 标记完成
+                                    </button>
+                                </div>
                             </div>
                         `;
                     });
-                    html += '</div>';
+
+                    html += `
+                            <div class="stats">
+                                <span>共找到 ${data.download_info_list.length} 个文件</span>
+                                <span>${new Date().toLocaleString()}</span>
+                            </div>
+                        </div>
+                    `;
+
                     resultDiv.innerHTML = html;
                 } else {
                     resultDiv.innerHTML = `
                         <div class="result error">
-                            <h3>未找到下载链接</h3>
-                            <p>未能从提供的URL中提取到任何下载链接。</p>
+                            <div class="result-header">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>未找到下载链接</span>
+                            </div>
+                            <div class="download-item">未能从提供的URL中提取到任何下载链接。</div>
                         </div>
                     `;
                 }
             } catch (error) {
                 resultDiv.innerHTML = `
                     <div class="result error">
-                        <h3>请求错误</h3>
-                        <p>发生错误: ${error.message}</p>
+                        <div class="result-header">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>请求错误</span>
+                        </div>
+                        <div class="download-item">发生错误: ${error.message}</div>
                     </div>
                 `;
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = '解析URL';
+                submitBtn.innerHTML = '<i class="fas fa-search"></i> 解析URL';
             }
         });
+
+        // 添加复制到剪贴板功能
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                // 保存原始HTML
+                const originalHTML = button.innerHTML;
+                // 更改按钮文本和样式
+                button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                button.classList.add('copied');
+                // 2秒后恢复原始状态
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制链接');
+            });
+        }
+
+        // 添加标记为完成功能
+        function markAsDone(index, button) {
+            const item = document.getElementById(`item-${index}`);
+            if (item) {
+                item.classList.toggle('done-item');
+                if (item.classList.contains('done-item')) {
+                    button.innerHTML = '<i class="fas fa-check"></i> 已完成';
+                    button.classList.add('done');
+                } else {
+                    button.innerHTML = '<i class="far fa-check-circle"></i> 标记完成';
+                    button.classList.remove('done');
+                }
+            }
+        }
     </script>
 </body>
 </html>
