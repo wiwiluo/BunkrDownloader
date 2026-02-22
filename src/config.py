@@ -38,7 +38,7 @@ DOWNLOAD_REFERER = "https://get.bunkrr.su/"
 # ============================
 MEDIA_SLUG_REGEX = r'const\s+slug\s*=\s*"([a-zA-Z0-9_-]+)"'  # Extract media slug.
 VALID_SLUG_REGEX = r"^[a-zA-Z0-9_-]+$"                       # Validate media slug.
-VALID_CHARACTERS_REGEX = r'[<>:"/\\|?*\x00-\x1f]'  # Strip only filesystem-illegal chars
+VALID_CHARACTERS_REGEX = r'[<>:"/\\|?*\x00-\x1f]'            # Validate characters.
 
 # ============================
 # UI & Table Settings
@@ -223,6 +223,11 @@ def add_common_arguments(parser: ArgumentParser) -> None:
         type=str,
         default=None,
         help="The directory where the downloaded content will be saved.",
+    )
+    parser.add_argument(
+        "--no-download-folder",
+        action="store_true",
+        help="Save files without a 'Downloads' subfolder.",
     )
     parser.add_argument(
         "--disable-ui",

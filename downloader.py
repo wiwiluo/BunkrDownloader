@@ -125,6 +125,7 @@ async def validate_and_download(
     download_path = create_download_directory(
         directory_name,
         custom_path=args.custom_path,
+        no_download_folder=args.no_download_folder,
     )
     session_info = SessionInfo(
         args=args,
