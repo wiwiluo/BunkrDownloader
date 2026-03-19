@@ -39,7 +39,8 @@ project-root/
 │ ├── managers/
 │ │ ├── live_manager.py      # Manages a real-time live display
 │ │ ├── log_manager.py       # Manages real-time log updates
-│ │ └── progress_manager.py  # Manages progress bars
+│ │ ├── progress_manager.py  # Manages progress bars
+│ │ └── summary_manager.py   # Manages final summaries
 │ ├── bunkr_utils.py         # Utilities for checking Bunkr status
 │ ├── config.py              # Manages constants and settings used across the project
 │ ├── file_utils.py          # Utilities for managing file operations
