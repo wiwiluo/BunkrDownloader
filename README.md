@@ -28,7 +28,7 @@
 
 ```
 project-root/
-├── helpers/
+├── src/
 │ ├── crawlers/
 | | ├── api_utils.py         # Utilities for handling API requests and responses
 │ │ └── crawler_utils.py     # Utilities for extracting media download links
