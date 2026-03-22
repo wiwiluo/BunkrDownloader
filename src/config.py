@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from .version import get_version_string
+
 if TYPE_CHECKING:
     from argparse import Namespace
 
@@ -244,6 +246,12 @@ def add_common_arguments(parser: ArgumentParser) -> None:
         type=int,
         default=MAX_RETRIES,
         help="Maximum number of retries for downloading a single media.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=get_version_string(),
+        help="Show program's version and exit.",
     )
 
 
