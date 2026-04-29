@@ -14,6 +14,7 @@ import platform
 import random
 import shutil
 import sys
+import time
 from http.client import RemoteDisconnected
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -80,6 +81,40 @@ async def fetch_page(url: str, retries: int = 5) -> BeautifulSoup | None:
                 await asyncio.sleep(delay)
 
         # Catch-all for request-related errors
+        except requests.RequestException:
+            return None
+
+    return None
+
+
+def fetch_page_sync(url: str, retries: int = 5) -> BeautifulSoup | None:
+    """Synchronous version of fetch_page — fetch HTML with retry logic."""
+    tried_fallback = False
+
+    def handle_response(response: Response) -> BeautifulSoup | None:
+        if response.status_code in FETCH_ERROR_MESSAGES:
+            log_message = FETCH_ERROR_MESSAGES[response.status_code].format(url=url)
+            logging.exception(log_message)
+            return None
+        return BeautifulSoup(response.content, "html.parser")
+
+    for attempt in range(retries):
+        try:
+            response = requests.Session().get(url, timeout=40)
+            if response.status_code == HTTPStatus.FORBIDDEN and not tried_fallback:
+                tried_fallback = True
+                url = replace_domain_with_fallback(url)
+                continue
+
+            response.raise_for_status()
+            return handle_response(response)
+
+        except RemoteDisconnected:
+            logging.exception("Remote end closed connection without response.")
+            if attempt < retries - 1:
+                delay = 2 ** (attempt + 1) + random.uniform(1, 2)
+                time.sleep(delay)
+
         except requests.RequestException:
             return None
 

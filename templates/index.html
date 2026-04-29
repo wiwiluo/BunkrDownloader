@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkr URL 解析器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f5f7fa;
+    color: #1a1a2e;
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  button:active { transform: scale(0.97); }
+  button.primary {
+    background: #6366f1;
+    color: #fff;
+  }
+  button.primary:hover { background: #4f46e5; }
+  button.primary:disabled {
+    background: #a5b4fc;
+    cursor: not-allowed;
+  }
+  button.secondary {
+    background: #e2e8f0;
+    color: #334155;
+  }
+  button.secondary:hover { background: #cbd5e1; }
+
+  .hint {
+    font-size: 0.82rem;
+    color: #888;
+    margin-left: auto;
+  }
+
+  /* Loading */
+  #loading {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #eef2ff;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #4338ca;
+  }
+  #loading.show { display: flex; }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 3px solid #c7d2fe;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stats bar */
+  #stats {
+    display: none;
+    margin-top: 16px;
+    padding: 10px 16px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #166534;
+  }
+  #stats.show { display: block; }
+
+  /* Errors */
+  #errors {
+    display: none;
+    margin-top: 12px;
+  }
+  #errors.show { display: block; }
+  .error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 6px;
+    font-size: 0.88rem;
+  }
+  .error-box .url-label { font-weight: 600; color: #991b1b; }
+  .error-box .err-msg  { color: #b91c1c; margin-top: 2px; word-break: break-all; }
+
+  /* Results table */
+  #results { margin-top: 16px; }
+  #results .filename {
+    word-break: break-all;
+    font-weight: 500;
+  }
+  #results .filename a {
+    color: #2563eb;
+    text-decoration: none;
+  }
+  #results .filename a:hover { text-decoration: underline; }
+  #results table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  #results th {
+    background: #f8fafc;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  #results td {
+    padding: 10px 14px;
+    font-size: 0.92rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  #results tr:last-child td { border-bottom: none; }
+  #results .source-col {
+    color: #94a3b8;
+    font-size: 0.82rem;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #results .num-col { text-align: center; color: #94a3b8; width: 40px; }
+
+  /* ===== Action buttons in results table ===== */
+  .action-cell {
+    white-space: nowrap;
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+  }
+  .btn-sm {
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.5;
+  }
+  .btn-sm:active { transform: scale(0.95); }
+  .btn-motrix  { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+  .btn-motrix:hover { background: #ddd6fe; }
+  .btn-copy    { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+  .btn-copy:hover { background: #dcfce7; }
+  .btn-copy.copied { background: #166534; color: #fff; border-color: #166534; }
+  .btn-done    { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+  .btn-done:hover { background: #fee2e2; }
+  .btn-done.done { background: #166534; color: #fff; border-color: #166534; }
+
+  /* Done row state */
+  #results tr.done-row { background: #f8fafc; }
+  #results tr.done-row .filename a {
+    text-decoration: line-through;
+    color: #94a3b8;
+    pointer-events: none;
+  }
+  #results tr.done-row .action-cell .btn-motrix,
+  #results tr.done-row .action-cell .btn-copy {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  #empty-state {
+    display: none;
+    text-align: center;
+    padding: 48px 16px;
+    color: #94a3b8;
+  }
+  #empty-state.show { display: block; }
+
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .hint { margin-left: 0; text-align: center; }
+    #results .source-col { max-width: 120px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🔗 Bunkr URL 解析器</h1>
+  <p class="subtitle">粘贴 Bunkr 专辑或单文件 URL，解析出真实的文件下载地址</p>
+
+  <textarea id="urls" placeholder="每行一个 URL，例如：&#10;https://bunkr.cr/a/abc123&#10;https://bunkr.cr/f/xyz789"></textarea>
+
+  <div class="toolbar">
+    <button class="primary" id="btn-resolve" onclick="resolve()">解析</button>
+    <button class="secondary" onclick="clearAll()">清空</button>
+    <span class="hint">支持专辑（/a/）和单文件（/f/ /i/ /v/）URL</span>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>正在解析，请稍候…</span>
+  </div>
+
+  <div id="stats"></div>
+  <div id="errors"></div>
+  <div id="results"></div>
+  <div id="empty-state">✨ 在上方输入 URL 后点击「解析」</div>
+</div>
+
+<script>
+const textarea = document.getElementById('urls');
+const btnResolve = document.getElementById('btn-resolve');
+const loadingEl = document.getElementById('loading');
+const statsEl = document.getElementById('stats');
+const errorsEl = document.getElementById('errors');
+const resultsEl = document.getElementById('results');
+const emptyEl = document.getElementById('empty-state');
+
+// Restore from sessionStorage
+const saved = sessionStorage.getItem('bunkr_urls');
+if (saved) textarea.value = saved;
+
+textarea.addEventListener('input', () => {
+  sessionStorage.setItem('bunkr_urls', textarea.value);
+});
+
+async function resolve() {
+  const lines = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    textarea.focus();
+    return;
+  }
+
+  btnResolve.disabled = true;
+  loadingEl.classList.add('show');
+  errorsEl.classList.remove('show');
+  errorsEl.innerHTML = '';
+  resultsEl.innerHTML = '';
+  statsEl.classList.remove('show');
+
+  try {
+    const resp = await fetch('/api/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: lines }),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      showError({ url: '', error: data.error });
+      return;
+    }
+
+    // Render errors
+    if (data.errors && data.errors.length > 0) {
+      errorsEl.classList.add('show');
+      data.errors.forEach(e => {
+        const box = document.createElement('div');
+        box.className = 'error-box';
+        box.innerHTML = `<div class="url-label">${escHtml(e.url)}</div><div class="err-msg">${escHtml(e.error)}</div>`;
+        errorsEl.appendChild(box);
+      });
+    }
+
+    // Render results
+    if (data.results && data.results.length > 0) {
+      let table = document.createElement('table');
+      table.innerHTML = `
+        <thead><tr>
+          <th class="num-col">#</th>
+          <th>文件名</th>
+          <th>来源 URL</th>
+          <th style="text-align:right;width:260px">操作</th>
+        </tr></thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector('tbody');
+      data.results.forEach((item, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="num-col">${i + 1}</td>
+          <td class="filename"><a href="${escHtml(item.download_url)}" target="_blank" rel="noopener">${escHtml(item.filename)}</a></td>
+          <td class="source-col" title="${escHtml(item.source_url)}">${escHtml(item.source_url)}</td>
+          <td class="action-cell">
+            <button class="btn-sm btn-motrix" onclick="sendToMotrix(this)" data-url="${escHtml(item.download_url)}" data-filename="${escHtml(item.filename)}">Motrix下载</button>
+            <button class="btn-sm btn-copy" onclick="copyAddress(this)" data-url="${escHtml(item.download_url)}">复制地址</button>
+            <button class="btn-sm btn-done" onclick="markDone(this)">DONE</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      resultsEl.appendChild(table);
+
+      // Stats
+      statsEl.textContent = `✅ 共解析出 ${data.results.length} 个文件` +
+        (data.errors.length > 0 ? `，${data.errors.length} 个错误` : '');
+      statsEl.classList.add('show');
+      emptyEl.classList.remove('show');
+    } else if ((!data.errors || data.errors.length === 0)) {
+      emptyEl.textContent = '😕 未找到任何可下载的文件';
+      emptyEl.classList.add('show');
+    }
+  } catch (err) {
+    showError({ url: '', error: '网络请求失败：' + err.message });
+  } finally {
+    btnResolve.disabled = false;
+    loadingEl.classList.remove('show');
+  }
+}
+
+function clearAll() {
+  textarea.value = '';
+  sessionStorage.removeItem('bunkr_urls');
+  errorsEl.classList.remove('show');
+  errorsEl.innerHTML = '';
+  resultsEl.innerHTML = '';
+  statsEl.classList.remove('show');
+  emptyEl.textContent = '✨ 在上方输入 URL 后点击「解析」';
+  emptyEl.classList.add('show');
+  textarea.focus();
+}
+
+function showError(e) {
+  errorsEl.classList.add('show');
+  const box = document.createElement('div');
+  box.className = 'error-box';
+  box.innerHTML = `<div class="url-label">${escHtml(e.url)}</div><div class="err-msg">${escHtml(e.error)}</div>`;
+  errorsEl.appendChild(box);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ---------------------------------------------------------------------------
+// Action: sendToMotrix
+// ---------------------------------------------------------------------------
+function sendToMotrix(btn) {
+  const url = btn.dataset.url;
+  const filename = btn.dataset.filename;
+
+  fetch('http://127.0.0.1:16800/jsonrpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method: 'aria2.addUri',
+      params: [[url], { out: filename }],
+    }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.result) {
+        const orig = btn.textContent;
+        btn.textContent = '✓ 已发送';
+        btn.style.cssText = 'background:#166534;color:#fff;border-color:#166534;';
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.cssText = '';
+        }, 2000);
+      } else {
+        alert('发送到 Motrix 失败，请确认 Motrix 已启动（默认端口 16800）');
+      }
+    })
+    .catch(() => {
+      alert('无法连接到 Motrix，请确认 Motrix 已启动（默认端口 16800）');
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Action: copyAddress
+// ---------------------------------------------------------------------------
+function copyAddress(btn) {
+  const url = btn.dataset.url;
+
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  };
+
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+    .catch(fallback)
+    .then(() => {
+      btn.textContent = '✓ 已复制';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '复制地址';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Action: markDone
+// ---------------------------------------------------------------------------
+function markDone(btn) {
+  const tr = btn.closest('tr');
+  const isDone = tr.classList.toggle('done-row');
+  btn.textContent = isDone ? '✓ DONE' : 'DONE';
+  btn.classList.toggle('done', isDone);
+}
+
+// Show empty state initially
+emptyEl.classList.add('show');
+</script>
+</body>
+</html>
