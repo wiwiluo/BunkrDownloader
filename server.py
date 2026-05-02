@@ -13,7 +13,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import queue
 import sys
+import threading
 
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 
@@ -33,10 +35,15 @@ app = Flask(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _resolve_single_url(url: str) -> dict:
-    """Resolve one Bunkr URL (album or single file).
+async def _resolve_single_url(
+    url: str,
+    progress_queue: queue.Queue | None = None,
+) -> dict:
+    """解析单个 Bunkr URL（专辑或单文件）。
 
-    Returns ``{"results": list[dict], "errors": list[dict]}``.
+    若提供 progress_queue，则解析专辑时会逐文件推送进度事件。
+
+    返回 ``{"results": list[dict], "errors": list[dict]}``。
     """
     validated_url = add_https_prefix(url.strip())
     soup = await fetch_page(validated_url)
@@ -64,13 +71,28 @@ async def _resolve_single_url(url: str) -> dict:
                 "errors": [{"url": url, "error": str(exc)}],
             }
 
-        for item_page in item_pages:
+        total_items = len(item_pages)
+        if progress_queue is not None:
+            progress_queue.put({
+                "type": "sub_start",
+                "url": url,
+                "total": total_items,
+            })
+
+        for idx, item_page in enumerate(item_pages):
             try:
                 item_soup = await fetch_page(item_page)
                 if item_soup is None:
                     errors.append(
                         {"url": item_page, "error": "无法访问子页面"},
                     )
+                    if progress_queue is not None:
+                        progress_queue.put({
+                            "type": "sub_progress",
+                            "url": url,
+                            "current": idx + 1,
+                            "total": total_items,
+                        })
                     continue
 
                 dl_link, filename = await get_download_info(item_page, item_soup)
@@ -89,8 +111,23 @@ async def _resolve_single_url(url: str) -> dict:
             except Exception as exc:  # noqa: BLE001
                 errors.append({"url": item_page, "error": str(exc)})
 
+            if progress_queue is not None:
+                progress_queue.put({
+                    "type": "sub_progress",
+                    "url": url,
+                    "current": idx + 1,
+                    "total": total_items,
+                })
+
     # ---- Single file ----
     else:
+        if progress_queue is not None:
+            progress_queue.put({
+                "type": "sub_start",
+                "url": url,
+                "total": 1,
+            })
+
         try:
             dl_link, filename = await get_download_info(validated_url, soup)
             if dl_link:
@@ -107,6 +144,14 @@ async def _resolve_single_url(url: str) -> dict:
                 )
         except Exception as exc:  # noqa: BLE001
             errors.append({"url": url, "error": str(exc)})
+
+        if progress_queue is not None:
+            progress_queue.put({
+                "type": "sub_progress",
+                "url": url,
+                "current": 1,
+                "total": 1,
+            })
 
     return {"results": results, "errors": errors}
 
@@ -151,20 +196,37 @@ def api_resolve():
                 "url": url,
             })
 
-            try:
-                outcome = asyncio.run(_resolve_single_url(url))
-                all_results.extend(outcome["results"])
-                all_errors.extend(outcome["errors"])
-                yield _sse({
-                    "type": "url_done",
-                    "url": url,
-                    "files_found": len(outcome["results"]),
-                    "error_count": len(outcome["errors"]),
-                    "error_items": outcome["errors"],
-                })
-            except Exception as exc:  # noqa: BLE001
-                logging.exception("Unexpected error resolving %s", url)
-                err_item = {"url": url, "error": str(exc)}
+            # 使用线程 + 队列获取专辑内逐文件解析进度
+            q: queue.Queue = queue.Queue()
+            outcome_container: dict = {}
+
+            def _run() -> None:
+                try:
+                    outcome_container["data"] = asyncio.run(
+                        _resolve_single_url(url, progress_queue=q),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    outcome_container["error"] = exc
+                finally:
+                    q.put(None)  # 哨兵，表示解析完成
+
+            t = threading.Thread(target=_run)
+            t.start()
+
+            # 逐条读取进度事件并推送到前端
+            while True:
+                msg = q.get()
+                if msg is None:
+                    break
+                yield _sse(msg)
+
+            t.join()
+
+            if "error" in outcome_container:
+                logging.exception(
+                    "Unexpected error resolving %s", url,
+                )
+                err_item = {"url": url, "error": str(outcome_container["error"])}
                 all_errors.append(err_item)
                 yield _sse({
                     "type": "url_done",
@@ -173,6 +235,18 @@ def api_resolve():
                     "error_count": 1,
                     "error_items": [err_item],
                 })
+                continue
+
+            outcome = outcome_container["data"]
+            all_results.extend(outcome["results"])
+            all_errors.extend(outcome["errors"])
+            yield _sse({
+                "type": "url_done",
+                "url": url,
+                "files_found": len(outcome["results"]),
+                "error_count": len(outcome["errors"]),
+                "error_items": outcome["errors"],
+            })
 
         yield _sse({
             "type": "complete",

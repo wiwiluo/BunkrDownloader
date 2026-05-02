@@ -407,6 +407,12 @@ async function resolve() {
   }
 }
 
+// 获取最后一条 spinner 日志条目（:last-of-type 无法匹配，因 .log-msg span 在它之后）
+function getLastSpin() {
+  const icons = progressLog.querySelectorAll('.log-icon.spin');
+  return icons.length > 0 ? icons[icons.length - 1] : null;
+}
+
 function handleSSE(evt, total, setResults, setErrors) {
   switch (evt.type) {
 
@@ -418,9 +424,31 @@ function handleSSE(evt, total, setResults, setErrors) {
       break;
     }
 
+    case 'sub_start': {
+      // 专辑解析开始 — 更新最后一条日志，显示文件总数
+      const lastSpin = getLastSpin();
+      if (lastSpin) {
+        const entry = lastSpin.parentElement;
+        entry.querySelector('.log-msg').textContent =
+          `正在解析: ${truncateUrl(evt.url)} — 0/${evt.total} 个文件`;
+      }
+      break;
+    }
+
+    case 'sub_progress': {
+      // 专辑内逐文件解析进度
+      const lastSpin = getLastSpin();
+      if (lastSpin) {
+        const entry = lastSpin.parentElement;
+        entry.querySelector('.log-msg').textContent =
+          `正在解析: ${truncateUrl(evt.url)} — ${evt.current}/${evt.total} 个文件`;
+      }
+      break;
+    }
+
     case 'url_done': {
-      // Replace the last spin entry with result
-      const lastIcon = progressLog.querySelector('.log-icon.spin:last-of-type');
+      // 将最后一条 spinner 替换为结果
+      const lastIcon = getLastSpin();
       if (evt.error_count && evt.files_found === 0) {
         const errMsg = evt.error_items[0] ? evt.error_items[0].error : '解析失败';
         if (lastIcon) {
