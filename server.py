@@ -11,10 +11,11 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import sys
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 
 from src.crawlers.crawler_utils import (
     extract_all_album_item_pages,
@@ -122,34 +123,68 @@ def index():
 
 @app.route("/api/resolve", methods=["POST"])
 def api_resolve():
-    """Accept a JSON body ``{"urls": ["...", "..."]}`` and return resolved links."""
+    """Accept a JSON body ``{"urls": ["...", "..."]}`` and stream progress via SSE."""
     data = request.get_json(silent=True)
     if not data or "urls" not in data:
         return jsonify({"error": '缺少 "urls" 参数'}), 400
 
     raw_urls: list[str] = data["urls"]
-    if not raw_urls:
+    urls = [u.strip() for u in raw_urls if u.strip()]
+    if not urls:
         return jsonify({"results": [], "errors": []})
 
-    async def _process_all() -> dict:
+    def _sse(data: dict) -> str:
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    def generate():
+        total = len(urls)
         all_results: list[dict] = []
         all_errors: list[dict] = []
-        for raw_url in raw_urls:
-            url = raw_url.strip()
-            if not url:
-                continue
-            result = await _resolve_single_url(url)
-            all_results.extend(result["results"])
-            all_errors.extend(result["errors"])
-        return {"results": all_results, "errors": all_errors}
 
-    try:
-        outcome = asyncio.run(_process_all())
-    except Exception as exc:  # noqa: BLE001
-        logging.exception("Unexpected error during resolution")
-        return jsonify({"error": f"服务器内部错误: {exc}"}), 500
+        yield _sse({"type": "start", "total": total})
 
-    return jsonify(outcome)
+        for i, url in enumerate(urls):
+            yield _sse({
+                "type": "progress",
+                "current": i + 1,
+                "total": total,
+                "url": url,
+            })
+
+            try:
+                outcome = asyncio.run(_resolve_single_url(url))
+                all_results.extend(outcome["results"])
+                all_errors.extend(outcome["errors"])
+                yield _sse({
+                    "type": "url_done",
+                    "url": url,
+                    "files_found": len(outcome["results"]),
+                    "error_count": len(outcome["errors"]),
+                    "error_items": outcome["errors"],
+                })
+            except Exception as exc:  # noqa: BLE001
+                logging.exception("Unexpected error resolving %s", url)
+                err_item = {"url": url, "error": str(exc)}
+                all_errors.append(err_item)
+                yield _sse({
+                    "type": "url_done",
+                    "url": url,
+                    "files_found": 0,
+                    "error_count": 1,
+                    "error_items": [err_item],
+                })
+
+        yield _sse({
+            "type": "complete",
+            "results": all_results,
+            "errors": all_errors,
+        })
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"X-Accel-Buffering": "no"},
+    )
 
 
 # ---------------------------------------------------------------------------
