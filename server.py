@@ -17,7 +17,7 @@ import queue
 import sys
 import threading
 
-from flask import Flask, Response, jsonify, render_template, request, stream_with_context
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
 
 from src.crawlers.crawler_utils import (
     extract_all_album_item_pages,
@@ -261,10 +261,16 @@ def api_resolve():
     )
 
 
+@app.route("/favicon.ico")
+def favicon():
+    """Serve the favicon."""
+    return send_from_directory("assets", "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("🌐 Bunkr URL 解析器已启动 → http://127.0.0.1:5000", file=sys.stderr)
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False)

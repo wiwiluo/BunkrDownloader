@@ -3,306 +3,739 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
 <title>Bunkr URL 解析器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #f5f7fa;
-    color: #1a1a2e;
-    line-height: 1.6;
-    padding: 24px;
-  }
-  .container { max-width: 960px; margin: 0 auto; }
+  /* ===================================================================
+     Design Tokens
+     =================================================================== */
+  :root {
+    --color-primary: #6366F1;
+    --color-primary-hover: #4F46E5;
+    --color-primary-light: #EEF2FF;
+    --color-accent: #059669;
+    --color-accent-light: #ECFDF5;
+    --color-bg: #F5F3FF;
+    --color-surface: #FFFFFF;
+    --color-foreground: #1E1B4B;
+    --color-muted: #EBEFF9;
+    --color-muted-fg: #64748B;
+    --color-border: #E0E7FF;
+    --color-border-light: #F1F5F9;
+    --color-destructive: #DC2626;
+    --color-destructive-light: #FEF2F2;
+    --color-destructive-border: #FECACA;
+    --color-success: #059669;
+    --color-success-light: #ECFDF5;
 
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 4px;
+    --font-heading: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.06), 0 4px 6px -4px rgba(0,0,0,0.04);
+
+    --transition-fast: 150ms ease;
+    --transition: 200ms ease;
+    --transition-slow: 300ms ease;
+  }
+
+  /* ===================================================================
+     Reset & Base
+     =================================================================== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--color-foreground);
+    background: var(--color-bg);
+    min-height: 100vh;
+    padding: 32px 20px 64px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* ===================================================================
+     Header
+     =================================================================== */
+  .page-header {
+    margin-bottom: 28px;
+  }
+
+  .page-header h1 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    letter-spacing: -0.02em;
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-  .subtitle {
-    color: #666;
-    font-size: 0.9rem;
-    margin-bottom: 20px;
+    gap: 10px;
   }
 
-  textarea {
+  .page-header h1 .icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--color-primary);
+    color: #fff;
+    border-radius: var(--radius);
+    flex-shrink: 0;
+  }
+
+  .page-header h1 .icon-wrap svg {
+    width: 20px;
+    height: 20px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .page-subtitle {
+    margin-top: 6px;
+    font-size: 0.9rem;
+    color: var(--color-muted-fg);
+    padding-left: 50px;
+  }
+
+  /* ===================================================================
+     Input Card
+     =================================================================== */
+  .input-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-xs);
+    transition: box-shadow var(--transition);
+  }
+
+  .input-card:focus-within {
+    box-shadow: var(--shadow), 0 0 0 3px rgba(99,102,241,0.1);
+    border-color: var(--color-primary);
+  }
+
+  .input-card label {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-muted-fg);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  .input-card textarea {
     width: 100%;
-    min-height: 140px;
-    padding: 12px 14px;
-    font-size: 0.95rem;
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    border: 1px solid #d0d5dd;
-    border-radius: 8px;
+    min-height: 130px;
+    padding: 0;
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+    line-height: 1.7;
+    color: var(--color-foreground);
+    background: transparent;
+    border: none;
     resize: vertical;
     outline: none;
-    transition: border-color 0.2s;
   }
-  textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
 
+  .input-card textarea::placeholder {
+    color: #C7D2FE;
+  }
+
+  /* ===================================================================
+     Toolbar
+     =================================================================== */
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 16px;
     flex-wrap: wrap;
   }
 
-  button {
+  .btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 24px;
-    font-size: 1rem;
+    gap: 7px;
+    padding: 10px 22px;
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    user-select: none;
+    transition: all var(--transition);
+    outline: none;
+    position: relative;
+    overflow: hidden;
   }
-  button:active { transform: scale(0.97); }
-  button.primary {
-    background: #6366f1;
+
+  .btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.25);
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--color-primary);
     color: #fff;
+    box-shadow: 0 1px 2px rgba(99,102,241,0.3);
   }
-  button.primary:hover { background: #4f46e5; }
-  button.primary:disabled {
-    background: #a5b4fc;
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-primary:disabled {
+    background: #A5B4FC;
+    color: rgba(255,255,255,0.7);
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
-  button.secondary {
-    background: #e2e8f0;
-    color: #334155;
-  }
-  button.secondary:hover { background: #cbd5e1; }
 
-  .hint {
-    font-size: 0.82rem;
-    color: #888;
+  .btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+  }
+  .btn-secondary:hover {
+    background: var(--color-muted);
+    border-color: #CBD5E1;
+  }
+
+  .btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .toolbar .hint {
     margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--color-muted-fg);
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 
-  /* Progress area */
+  .toolbar .hint svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+  }
+
+  /* ===================================================================
+     Progress Area
+     =================================================================== */
   #progress-area {
     display: none;
-    margin-top: 16px;
+    margin-top: 20px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    box-shadow: var(--shadow-xs);
   }
   #progress-area.show { display: block; }
+
   .progress-bar-wrap {
-    background: #e2e8f0;
-    border-radius: 8px;
-    height: 28px;
+    background: var(--color-muted);
+    border-radius: 99px;
+    height: 8px;
     overflow: hidden;
     position: relative;
   }
+
   .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #818cf8);
-    border-radius: 8px;
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #6366F1, #818CF8);
+    border-radius: 99px;
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
     width: 0%;
+    position: relative;
   }
-  .progress-bar-text {
+
+  .progress-bar-fill::after {
+    content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.82rem; font-weight: 600;
-    color: #1e293b;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 1.5s infinite;
   }
-  .progress-log {
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .progress-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 10px;
-    max-height: 220px;
-    overflow-y: auto;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.84rem;
   }
+
+  .progress-stats .count {
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .progress-stats .eta {
+    font-size: 0.78rem;
+    color: var(--color-muted-fg);
+  }
+
+  .progress-log {
+    margin-top: 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+  }
+
   .log-entry {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 5px 12px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
   }
-  .log-entry + .log-entry { border-top: 1px solid #f8fafc; }
-  .log-icon { flex-shrink: 0; width: 18px; text-align: center; }
-  .log-icon.ok  { color: #16a34a; }
-  .log-icon.err { color: #dc2626; }
+  .log-entry:hover { background: var(--color-muted); }
+
+  .log-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 99px;
+    font-size: 0.7rem;
+  }
+  .log-icon.ok {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+  .log-icon.err {
+    background: var(--color-destructive-light);
+    color: var(--color-destructive);
+  }
   .log-icon.spin {
     animation: spin 0.7s linear infinite;
-    color: #6366f1;
+    color: var(--color-primary);
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .log-msg { flex: 1; word-break: break-all; }
-  .log-detail { color: #94a3b8; font-size: 0.78rem; margin-top: 1px; }
 
-  /* Stats bar */
+  .log-msg {
+    flex: 1;
+    word-break: break-all;
+    color: var(--color-foreground);
+  }
+  .log-detail {
+    color: var(--color-muted-fg);
+    font-size: 0.75rem;
+    margin-top: 1px;
+  }
+
+  /* ===================================================================
+     Stats Bar
+     =================================================================== */
   #stats {
     display: none;
     margin-top: 16px;
-    padding: 10px 16px;
-    background: #f0fdf4;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #166534;
+    padding: 12px 18px;
+    background: var(--color-success-light);
+    border: 1px solid #A7F3D0;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--color-accent);
   }
   #stats.show { display: block; }
 
-  /* Errors */
+  /* ===================================================================
+     Errors
+     =================================================================== */
   #errors {
     display: none;
-    margin-top: 12px;
+    margin-top: 14px;
   }
-  #errors.show { display: block; }
-  .error-box {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 6px;
-    font-size: 0.88rem;
-  }
-  .error-box .url-label { font-weight: 600; color: #991b1b; }
-  .error-box .err-msg  { color: #b91c1c; margin-top: 2px; word-break: break-all; }
+  #errors.show { display: flex; flex-direction: column; gap: 8px; }
 
-  /* Results table */
-  #results { margin-top: 16px; }
+  .error-box {
+    background: var(--color-destructive-light);
+    border: 1px solid var(--color-destructive-border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 0.85rem;
+  }
+  .error-box .url-label {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #991B1B;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+  .error-box .err-msg {
+    color: #B91C1C;
+    word-break: break-all;
+  }
+
+  /* ===================================================================
+     Results Table
+     =================================================================== */
+  #results {
+    margin-top: 20px;
+  }
+
+  #results .table-wrap {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-xs);
+  }
+
+  #results table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #results th {
+    background: #FAFBFC;
+    text-align: left;
+    padding: 11px 16px;
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-muted-fg);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  #results td {
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+  }
+
+  #results tbody tr {
+    transition: background var(--transition-fast);
+  }
+  #results tbody tr:hover { background: #F8FAFD; }
+  #results tbody tr:last-child td { border-bottom: none; }
+
+  #results .num-col {
+    text-align: center;
+    color: var(--color-muted-fg);
+    font-size: 0.78rem;
+    font-family: var(--font-heading);
+    font-weight: 500;
+    width: 44px;
+  }
+
   #results .filename {
     word-break: break-all;
     font-weight: 500;
   }
+
   #results .filename a {
-    color: #2563eb;
+    color: #2563EB;
     text-decoration: none;
+    transition: color var(--transition-fast);
   }
-  #results .filename a:hover { text-decoration: underline; }
-  #results table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  #results .filename a:hover {
+    text-decoration: underline;
+    color: #1D4ED8;
   }
-  #results th {
-    background: #f8fafc;
-    text-align: left;
-    padding: 10px 14px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  #results td {
-    padding: 10px 14px;
-    font-size: 0.92rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  #results tr:last-child td { border-bottom: none; }
+
   #results .source-col {
-    color: #94a3b8;
-    font-size: 0.82rem;
-    max-width: 260px;
+    color: var(--color-muted-fg);
+    font-size: 0.8rem;
+    max-width: 240px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  #results .num-col { text-align: center; color: #94a3b8; width: 40px; }
 
-  /* ===== Action buttons in results table ===== */
+  #results .source-col abbr {
+    text-decoration: none;
+    cursor: default;
+  }
+
+  /* -- Action buttons -- */
   .action-cell {
     white-space: nowrap;
     display: flex;
-    gap: 5px;
+    gap: 6px;
     justify-content: flex-end;
   }
+
   .btn-sm {
-    padding: 3px 10px;
-    font-size: 0.75rem;
+    padding: 5px 12px;
+    font-family: var(--font-heading);
+    font-size: 0.73rem;
     font-weight: 600;
-    border-radius: 5px;
+    letter-spacing: -0.01em;
+    border-radius: var(--radius-sm);
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.15s;
-    line-height: 1.5;
+    transition: all var(--transition-fast);
+    outline: none;
+    line-height: 1.4;
   }
-  .btn-sm:active { transform: scale(0.95); }
-  .btn-motrix  { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
-  .btn-motrix:hover { background: #ddd6fe; }
-  .btn-copy    { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-  .btn-copy:hover { background: #dcfce7; }
-  .btn-copy.copied { background: #166534; color: #fff; border-color: #166534; }
-  .btn-done    { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
-  .btn-done:hover { background: #fee2e2; }
-  .btn-done.done { background: #166534; color: #fff; border-color: #166534; }
+  .btn-sm:focus-visible { box-shadow: 0 0 0 2px rgba(99,102,241,0.3); }
+  .btn-sm:active { transform: scale(0.96); }
+
+  .btn-motrix {
+    background: var(--color-primary-light);
+    color: #4338CA;
+    border-color: #C7D2FE;
+  }
+  .btn-motrix:hover { background: #DDD6FE; }
+
+  .btn-copy {
+    background: var(--color-accent-light);
+    color: #065F46;
+    border-color: #A7F3D0;
+  }
+  .btn-copy:hover { background: #D1FAE5; }
+  .btn-copy.copied {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+  }
+
+  .btn-download {
+    background: #EFF6FF;
+    color: #1E40AF;
+    border-color: #BFDBFE;
+  }
+  .btn-download:hover { background: #DBEAFE; }
+  .btn-download:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .btn-done {
+    background: var(--color-destructive-light);
+    color: #991B1B;
+    border-color: var(--color-destructive-border);
+  }
+  .btn-done:hover { background: #FEE2E2; }
+  .btn-done.done {
+    background: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
+  }
 
   /* Done row state */
-  #results tr.done-row { background: #f8fafc; }
+  #results tr.done-row {
+    background: #FAFBFC;
+  }
   #results tr.done-row .filename a {
     text-decoration: line-through;
-    color: #94a3b8;
+    color: var(--color-muted-fg);
     pointer-events: none;
   }
   #results tr.done-row .action-cell .btn-motrix,
-  #results tr.done-row .action-cell .btn-copy {
+  #results tr.done-row .action-cell .btn-copy,
+  #results tr.done-row .action-cell .btn-download {
     pointer-events: none;
-    opacity: 0.4;
+    opacity: 0.35;
   }
 
+  /* ===================================================================
+     Empty State
+     =================================================================== */
   #empty-state {
     display: none;
     text-align: center;
-    padding: 48px 16px;
-    color: #94a3b8;
+    padding: 56px 20px;
+    color: var(--color-muted-fg);
   }
   #empty-state.show { display: block; }
 
+  #empty-state .empty-icon {
+    display: block;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    stroke: #C7D2FE;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  #empty-state .empty-title {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    margin-bottom: 4px;
+  }
+
+  #empty-state .empty-desc {
+    font-size: 0.85rem;
+    color: var(--color-muted-fg);
+  }
+
+  /* ===================================================================
+     Responsive
+     =================================================================== */
   @media (max-width: 640px) {
-    body { padding: 12px; }
+    body { padding: 16px 12px 48px; }
+
+    .page-header h1 { font-size: 1.35rem; }
+    .page-subtitle { padding-left: 0; margin-top: 8px; }
+
     .toolbar { flex-direction: column; align-items: stretch; }
-    .hint { margin-left: 0; text-align: center; }
-    #results .source-col { max-width: 120px; }
+    .toolbar .hint { margin-left: 0; justify-content: center; }
+
+    .input-card { padding: 14px 16px; }
+    .input-card textarea { min-height: 110px; font-size: 0.85rem; }
+
+    #results .source-col { max-width: 100px; }
+    #results th, #results td { padding: 8px 10px; font-size: 0.8rem; }
+
+    .action-cell {
+      flex-direction: column;
+      gap: 4px;
+    }
+    .btn-sm { text-align: center; }
+
+    #results .table-wrap { border-radius: var(--radius); overflow-x: auto; }
+  }
+
+  /* ===================================================================
+     Reduced motion
+     =================================================================== */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <h1>🔗 Bunkr URL 解析器</h1>
-  <p class="subtitle">粘贴 Bunkr 专辑或单文件 URL，解析出真实的文件下载地址</p>
+  <!-- Header -->
+  <header class="page-header">
+    <h1>
+      <span class="icon-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </span>
+      Bunkr URL 解析器
+    </h1>
+    <p class="page-subtitle">粘贴 Bunkr 专辑或单文件 URL，解析出真实的文件下载地址</p>
+  </header>
 
-  <textarea id="urls" placeholder="每行一个 URL，例如：&#10;https://bunkr.cr/a/abc123&#10;https://bunkr.cr/f/xyz789"></textarea>
-
-  <div class="toolbar">
-    <button class="primary" id="btn-resolve" onclick="resolve()">解析</button>
-    <button class="secondary" onclick="clearAll()">清空</button>
-    <span class="hint">支持专辑（/a/）和单文件（/f/ /i/ /v/）URL</span>
+  <!-- Input Card -->
+  <div class="input-card">
+    <label for="urls-input">URL 列表</label>
+    <textarea
+      id="urls"
+      placeholder="每行一个 URL，例如：&#10;https://bunkr.cr/a/abc123&#10;https://bunkr.cr/f/xyz789"
+      aria-label="URL 列表输入，每行一个"
+    ></textarea>
   </div>
 
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" id="btn-resolve" onclick="resolve()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12 10 17 19 8"/></svg>
+      开始解析
+    </button>
+    <button class="btn btn-secondary" onclick="clearAll()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      清空
+    </button>
+    <span class="hint">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      支持专辑（/a/）和单文件（/f/ /i/ /v/）URL
+    </span>
+  </div>
+
+  <!-- Progress -->
   <div id="progress-area">
     <div class="progress-bar-wrap">
       <div class="progress-bar-fill" id="progress-fill"></div>
-      <div class="progress-bar-text" id="progress-text">0 / 0</div>
     </div>
-    <div class="progress-log" id="progress-log"></div>
+    <div class="progress-stats">
+      <span class="count" id="progress-text">0 / 0</span>
+      <span class="eta" id="progress-eta"></span>
+    </div>
+    <div class="progress-log" id="progress-log" role="log" aria-live="polite"></div>
   </div>
 
-  <div id="stats"></div>
-  <div id="errors"></div>
+  <!-- Stats -->
+  <div id="stats" role="status"></div>
+
+  <!-- Errors -->
+  <div id="errors" role="alert"></div>
+
+  <!-- Results -->
   <div id="results"></div>
-  <div id="empty-state">✨ 在上方输入 URL 后点击「解析」</div>
+
+  <!-- Empty State -->
+  <div id="empty-state">
+    <svg class="empty-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <div class="empty-title">准备好开始解析</div>
+    <div class="empty-desc">在上方输入 Bunkr URL 后点击「开始解析」</div>
+  </div>
+
 </div>
 
 <script>
+/* ===================================================================
+   State
+   =================================================================== */
 const textarea = document.getElementById('urls');
 const btnResolve = document.getElementById('btn-resolve');
 const progressArea = document.getElementById('progress-area');
 const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
+const progressEta = document.getElementById('progress-eta');
 const progressLog = document.getElementById('progress-log');
 const statsEl = document.getElementById('stats');
 const errorsEl = document.getElementById('errors');
@@ -310,6 +743,7 @@ const resultsEl = document.getElementById('results');
 const emptyEl = document.getElementById('empty-state');
 
 let abortController = null;
+let resolveStartTime = 0;
 
 // Restore from sessionStorage
 const saved = sessionStorage.getItem('bunkr_urls');
@@ -319,6 +753,9 @@ textarea.addEventListener('input', () => {
   sessionStorage.setItem('bunkr_urls', textarea.value);
 });
 
+/* ===================================================================
+   Resolve
+   =================================================================== */
 async function resolve() {
   const lines = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
   if (lines.length === 0) {
@@ -326,22 +763,24 @@ async function resolve() {
     return;
   }
 
-  // Cancel any in-flight request
   if (abortController) abortController.abort();
 
   btnResolve.disabled = true;
+  btnResolve.innerHTML = `<svg viewBox="0 0 24 24" class="spin-icon" style="animation:spin 0.7s linear infinite" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v2"/></svg> 解析中…`;
+
   errorsEl.classList.remove('show');
   errorsEl.innerHTML = '';
   resultsEl.innerHTML = '';
   statsEl.classList.remove('show');
   progressLog.innerHTML = '';
+  progressEta.textContent = '';
 
-  // Show progress area
   progressArea.classList.add('show');
   emptyEl.classList.remove('show');
   progressFill.style.width = '0%';
   progressText.textContent = `0 / ${lines.length}`;
 
+  resolveStartTime = performance.now();
   abortController = new AbortController();
 
   try {
@@ -382,18 +821,16 @@ async function resolve() {
       }
     }
 
-    // Render final results
     renderErrors(allErrors);
     renderResults(allResults);
 
     if (allResults.length > 0) {
-      statsEl.textContent = `✅ 共解析出 ${allResults.length} 个文件` +
-        (allErrors.length > 0 ? `，${allErrors.length} 个错误` : '');
+      statsEl.textContent = `解析完成，共找到 ${allResults.length} 个文件` +
+        (allErrors.length > 0 ? `，${allErrors.length} 个链接解析失败` : '');
       statsEl.classList.add('show');
       emptyEl.classList.remove('show');
     } else if (allErrors.length === 0) {
-      emptyEl.textContent = '😕 未找到任何可下载的文件';
-      emptyEl.classList.add('show');
+      updateEmptyState('未找到任何文件', '这些 URL 中没有可下载的文件');
     }
 
   } catch (err) {
@@ -402,15 +839,30 @@ async function resolve() {
     }
   } finally {
     btnResolve.disabled = false;
+    btnResolve.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12 10 17 19 8"/></svg> 开始解析`;
     progressArea.classList.remove('show');
     abortController = null;
   }
 }
 
-// 获取最后一条 spinner 日志条目（:last-of-type 无法匹配，因 .log-msg span 在它之后）
+/* ===================================================================
+   SSE Handler
+   =================================================================== */
 function getLastSpin() {
   const icons = progressLog.querySelectorAll('.log-icon.spin');
   return icons.length > 0 ? icons[icons.length - 1] : null;
+}
+
+function updateEta(current, total) {
+  if (current === 0 || resolveStartTime === 0) return;
+  const elapsed = performance.now() - resolveStartTime;
+  const perItem = elapsed / current;
+  const remaining = (total - current) * perItem;
+  if (remaining > 2000) {
+    progressEta.textContent = `预计剩余 ${Math.ceil(remaining / 1000)}s`;
+  } else {
+    progressEta.textContent = '';
+  }
 }
 
 function handleSSE(evt, total, setResults, setErrors) {
@@ -420,12 +872,12 @@ function handleSSE(evt, total, setResults, setErrors) {
       const pct = Math.round((evt.current / evt.total) * 100);
       progressFill.style.width = pct + '%';
       progressText.textContent = `${evt.current} / ${evt.total}`;
+      updateEta(evt.current, evt.total);
       addLogEntry('spin', `正在解析: ${truncateUrl(evt.url)}`);
       break;
     }
 
     case 'sub_start': {
-      // 专辑解析开始 — 更新最后一条日志，显示文件总数
       const lastSpin = getLastSpin();
       if (lastSpin) {
         const entry = lastSpin.parentElement;
@@ -436,7 +888,6 @@ function handleSSE(evt, total, setResults, setErrors) {
     }
 
     case 'sub_progress': {
-      // 专辑内逐文件解析进度
       const lastSpin = getLastSpin();
       if (lastSpin) {
         const entry = lastSpin.parentElement;
@@ -447,13 +898,12 @@ function handleSSE(evt, total, setResults, setErrors) {
     }
 
     case 'url_done': {
-      // 将最后一条 spinner 替换为结果
       const lastIcon = getLastSpin();
       if (evt.error_count && evt.files_found === 0) {
         const errMsg = evt.error_items[0] ? evt.error_items[0].error : '解析失败';
         if (lastIcon) {
           lastIcon.className = 'log-icon err';
-          lastIcon.textContent = '✗';
+          lastIcon.textContent = '!';
           const entry = lastIcon.parentElement;
           entry.querySelector('.log-msg').textContent = `${truncateUrl(evt.url)} — ${errMsg}`;
         } else {
@@ -465,7 +915,8 @@ function handleSSE(evt, total, setResults, setErrors) {
           : '无文件';
         if (lastIcon) {
           lastIcon.className = 'log-icon ok';
-          lastIcon.textContent = '✓';
+          lastIcon.textContent = '';
+          lastIcon.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
           const entry = lastIcon.parentElement;
           entry.querySelector('.log-msg').textContent = `${truncateUrl(evt.url)} — ${detail}`;
         } else {
@@ -486,21 +937,52 @@ function handleSSE(evt, total, setResults, setErrors) {
 function addLogEntry(iconClass, msg) {
   const div = document.createElement('div');
   div.className = 'log-entry';
-  let iconChar = '●';
-  if (iconClass === 'spin') iconChar = '◌';
-  else if (iconClass === 'ok') iconChar = '✓';
-  else if (iconClass === 'err') iconChar = '✗';
-  div.innerHTML = `<span class="log-icon ${iconClass}">${iconChar}</span><span class="log-msg">${escHtml(msg)}</span>`;
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'log-icon ' + iconClass;
+
+  if (iconClass === 'ok') {
+    iconSpan.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else if (iconClass === 'spin') {
+    iconSpan.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v2"/></svg>';
+  } else if (iconClass === 'err') {
+    iconSpan.textContent = '!';
+  }
+
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'log-msg';
+  msgSpan.textContent = msg;
+
+  div.appendChild(iconSpan);
+  div.appendChild(msgSpan);
   progressLog.appendChild(div);
   progressLog.scrollTop = progressLog.scrollHeight;
 }
 
+/* ===================================================================
+   Helpers
+   =================================================================== */
 function truncateUrl(url, maxLen) {
   maxLen = maxLen || 60;
   if (url.length <= maxLen) return url;
   return url.substring(0, maxLen - 3) + '...';
 }
 
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function updateEmptyState(title, desc) {
+  emptyEl.querySelector('.empty-title').textContent = title;
+  emptyEl.querySelector('.empty-desc').textContent = desc;
+  emptyEl.classList.add('show');
+}
+
+/* ===================================================================
+   Clear
+   =================================================================== */
 function clearAll() {
   if (abortController) abortController.abort();
   textarea.value = '';
@@ -508,16 +990,21 @@ function clearAll() {
   progressArea.classList.remove('show');
   progressLog.innerHTML = '';
   progressFill.style.width = '0%';
+  progressText.textContent = '0 / 0';
+  progressEta.textContent = '';
   errorsEl.classList.remove('show');
   errorsEl.innerHTML = '';
   resultsEl.innerHTML = '';
   statsEl.classList.remove('show');
-  emptyEl.textContent = '✨ 在上方输入 URL 后点击「解析」';
-  emptyEl.classList.add('show');
+  updateEmptyState('准备好开始解析', '在上方输入 Bunkr URL 后点击「开始解析」');
   btnResolve.disabled = false;
+  btnResolve.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12 10 17 19 8"/></svg> 开始解析`;
   textarea.focus();
 }
 
+/* ===================================================================
+   Error display
+   =================================================================== */
 function showError(e) {
   errorsEl.classList.add('show');
   const box = document.createElement('div');
@@ -537,46 +1024,50 @@ function renderErrors(errors) {
   });
 }
 
+/* ===================================================================
+   Results table
+   =================================================================== */
 function renderResults(results) {
   if (!results || results.length === 0) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+
   const table = document.createElement('table');
   table.innerHTML = `
     <thead><tr>
       <th class="num-col">#</th>
       <th>文件名</th>
       <th>来源 URL</th>
-      <th style="text-align:right;width:260px">操作</th>
+      <th style="text-align:right;width:250px">操作</th>
     </tr></thead>
     <tbody></tbody>
   `;
+
   const tbody = table.querySelector('tbody');
   results.forEach((item, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="num-col">${i + 1}</td>
       <td class="filename"><a href="${escHtml(item.download_url)}" target="_blank" rel="noopener">${escHtml(item.filename)}</a></td>
-      <td class="source-col" title="${escHtml(item.source_url)}">${escHtml(item.source_url)}</td>
+      <td class="source-col" title="${escHtml(item.source_url)}"><abbr title="${escHtml(item.source_url)}">${escHtml(item.source_url)}</abbr></td>
       <td class="action-cell">
-        <button class="btn-sm btn-motrix" onclick="sendToMotrix(this)" data-url="${escHtml(item.download_url)}" data-filename="${escHtml(item.filename)}">Motrix下载</button>
+        <button class="btn-sm btn-motrix" onclick="sendToMotrix(this)" data-url="${escHtml(item.download_url)}" data-filename="${escHtml(item.filename)}">Motrix 下载</button>
         <button class="btn-sm btn-copy" onclick="copyAddress(this)" data-url="${escHtml(item.download_url)}">复制地址</button>
-        <button class="btn-sm btn-done" onclick="markDone(this)">DONE</button>
+        <button class="btn-sm btn-download" onclick="downloadFile(this)" data-url="${escHtml(item.download_url)}" data-filename="${escHtml(item.filename)}">下载</button>
+        <button class="btn-sm btn-done" onclick="markDone(this)">完成</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
-  resultsEl.appendChild(table);
+
+  wrap.appendChild(table);
+  resultsEl.appendChild(wrap);
 }
 
-function escHtml(s) {
-  if (!s) return '';
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-// ---------------------------------------------------------------------------
-// Action: sendToMotrix
-// ---------------------------------------------------------------------------
+/* ===================================================================
+   Actions
+   =================================================================== */
 function sendToMotrix(btn) {
   const url = btn.dataset.url;
   const filename = btn.dataset.filename;
@@ -594,11 +1085,11 @@ function sendToMotrix(btn) {
     .then((r) => r.json())
     .then((data) => {
       if (data.result) {
-        const orig = btn.textContent;
-        btn.textContent = '✓ 已发送';
-        btn.style.cssText = 'background:#166534;color:#fff;border-color:#166534;';
+        const origHTML = btn.innerHTML;
+        btn.textContent = '已发送';
+        btn.style.cssText = 'background:#059669;color:#fff;border-color:#059669;';
         setTimeout(() => {
-          btn.textContent = orig;
+          btn.innerHTML = origHTML;
           btn.style.cssText = '';
         }, 2000);
       } else {
@@ -610,9 +1101,6 @@ function sendToMotrix(btn) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Action: copyAddress
-// ---------------------------------------------------------------------------
 function copyAddress(btn) {
   const url = btn.dataset.url;
 
@@ -630,7 +1118,7 @@ function copyAddress(btn) {
   (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
     .catch(fallback)
     .then(() => {
-      btn.textContent = '✓ 已复制';
+      btn.textContent = '已复制';
       btn.classList.add('copied');
       setTimeout(() => {
         btn.textContent = '复制地址';
@@ -639,13 +1127,55 @@ function copyAddress(btn) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Action: markDone
-// ---------------------------------------------------------------------------
+function downloadFile(btn) {
+  const url = btn.dataset.url;
+  const filename = btn.dataset.filename;
+  const origText = btn.textContent;
+
+  btn.textContent = '下载中…';
+  btn.disabled = true;
+
+  fetch(url)
+    .then(resp => {
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return resp.blob();
+    })
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      btn.textContent = '已下载';
+      setTimeout(() => {
+        btn.textContent = origText;
+        btn.disabled = false;
+      }, 2000);
+    })
+    .catch(() => {
+      // CORS 回退：直接用浏览器打开链接触发下载
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      btn.textContent = origText;
+      btn.disabled = false;
+    });
+}
+
 function markDone(btn) {
   const tr = btn.closest('tr');
   const isDone = tr.classList.toggle('done-row');
-  btn.textContent = isDone ? '✓ DONE' : 'DONE';
+  btn.textContent = isDone ? '已完成' : '完成';
   btn.classList.toggle('done', isDone);
 }
 
