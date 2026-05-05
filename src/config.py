@@ -84,6 +84,12 @@ MAX_RETRIES = 5         # The maximum number of retries for downloading a single
 # Mapping of URL identifiers to a boolean for album (True) vs single file (False).
 URL_TYPE_MAPPING = {"a": True, "f": False, "i": False, "v": False}
 
+# 视频文件扩展名，用于 Web 解析器的专辑过滤
+VIDEO_EXTENSIONS: frozenset[str] = frozenset({
+    ".mp4", ".mkv", ".webm", ".avi", ".mov", ".wmv", ".flv",
+    ".m4v", ".ts", ".m2ts", ".3gp", ".ogv",
+})
+
 # Constants for file sizes, expressed in bytes.
 KB = 1024
 MB = 1024 * KB

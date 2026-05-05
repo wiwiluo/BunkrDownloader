@@ -16,12 +16,15 @@ import logging
 import queue
 import sys
 import threading
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
 
+from src.config import VIDEO_EXTENSIONS
 from src.crawlers.crawler_utils import (
     extract_all_album_item_pages,
     get_download_info,
+    get_item_thumbnail,
 )
 from src.general_utils import fetch_page
 from src.url_utils import add_https_prefix, check_url_type, get_host_page
@@ -97,13 +100,17 @@ async def _resolve_single_url(
 
                 dl_link, filename = await get_download_info(item_page, item_soup)
                 if dl_link:
-                    results.append(
-                        {
-                            "filename": filename,
-                            "download_url": dl_link,
-                            "source_url": item_page,
-                        },
-                    )
+                    ext = Path(filename).suffix.lower()
+                    if ext in VIDEO_EXTENSIONS:
+                        thumbnail_url = get_item_thumbnail(item_soup)
+                        results.append(
+                            {
+                                "filename": filename,
+                                "download_url": dl_link,
+                                "source_url": item_page,
+                                "thumbnail_url": thumbnail_url,
+                            },
+                        )
                 else:
                     errors.append(
                         {"url": item_page, "error": "无法解析下载链接"},
@@ -131,11 +138,13 @@ async def _resolve_single_url(
         try:
             dl_link, filename = await get_download_info(validated_url, soup)
             if dl_link:
+                thumbnail_url = get_item_thumbnail(soup)
                 results.append(
                     {
                         "filename": filename,
                         "download_url": dl_link,
                         "source_url": validated_url,
+                        "thumbnail_url": thumbnail_url,
                     },
                 )
             else:
