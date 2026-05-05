@@ -222,3 +222,12 @@ python3 downloader.py https://bunkr.si/a/PUK068QE --max-retries 3
 
 The application logs any issues encountered during the download process in a file named `session.log`.
 Check this file for any URLs that may have been blocked or had errors.
+
+## nohup start & stop
+```bash
+# nohup start
+nohup python server.py &
+# stop nohup server
+lsof -i :5000
+kill -9 <PID>
+```
