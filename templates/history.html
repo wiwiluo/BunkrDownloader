@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<title>历史记录 - Bunkr URL 解析器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-primary: #6366F1;
+    --color-primary-hover: #4F46E5;
+    --color-primary-light: #EEF2FF;
+    --color-accent: #059669;
+    --color-accent-light: #ECFDF5;
+    --color-bg: #F5F3FF;
+    --color-surface: #FFFFFF;
+    --color-foreground: #1E1B4B;
+    --color-muted: #EBEFF9;
+    --color-muted-fg: #64748B;
+    --color-border: #E0E7FF;
+    --color-destructive: #DC2626;
+    --color-destructive-light: #FEF2F2;
+    --color-success: #059669;
+    --color-success-light: #ECFDF5;
+    --font-heading: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04);
+    --transition: 200ms ease;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--color-foreground);
+    background: var(--color-bg);
+    min-height: 100vh;
+    padding: 32px 20px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .page-header h1 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 22px;
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--transition);
+    outline: none;
+  }
+  .btn:focus-visible { box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+  }
+  .btn-secondary:hover { background: var(--color-muted); }
+
+  .btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-primary:disabled { background: #A5B4FC; cursor: not-allowed; }
+
+  .btn-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    transition: all var(--transition);
+    font-family: var(--font-body);
+    white-space: nowrap;
+  }
+  .btn-sm:hover { background: var(--color-muted); }
+
+  .btn-sm.btn-done {
+    min-width: 60px;
+    color: var(--color-accent);
+    border-color: #A7F3D0;
+    background: var(--color-accent-light);
+  }
+  .btn-sm.btn-done:hover { background: #D1FAE5; }
+  .btn-sm.btn-done.done {
+    color: var(--color-muted-fg);
+    border-color: var(--color-border);
+    background: var(--color-muted);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .btn-danger {
+    background: var(--color-destructive);
+    color: #fff;
+  }
+  .btn-danger:hover { background: #B91C1C; }
+
+  .action-cell {
+    display: flex;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .btn-sm.btn-motrix { min-width: 68px; color: #7C3AED; border-color: #DDD6FE; background: #F5F3FF; }
+  .btn-sm.btn-motrix:hover { background: #EDE9FE; }
+
+  .btn-sm.btn-copy { min-width: 60px; color: #0891B2; border-color: #A5F3FC; background: #ECFEFF; }
+  .btn-sm.btn-copy:hover { background: #CFFAFE; }
+
+  .btn-sm.btn-download { min-width: 60px; color: #2563EB; border-color: #BFDBFE; background: #EFF6FF; }
+  .btn-sm.btn-download:hover { background: #DBEAFE; }
+
+  .btn-sm.btn-delete { min-width: 48px; color: var(--color-destructive); border-color: var(--color-destructive); }
+  .btn-sm.btn-delete:hover { background: var(--color-destructive-light); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Search */
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+  .search-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  }
+  .search-input::placeholder { color: #C7D2FE; }
+
+  /* Table */
+  .table-wrap {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  thead {
+    background: var(--color-primary-light);
+  }
+
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    font-family: var(--font-heading);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-muted-fg);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border-light);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover { background: #FAFAFE; }
+
+  .cb-col { width: 36px; text-align: center; }
+  .cb-col input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+  }
+
+  .num-col { width: 40px; color: var(--color-muted-fg); text-align: center; }
+
+  .thumb-col { width: 72px; }
+  .thumb-col img {
+    width: 64px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: var(--color-muted);
+  }
+
+  .filename-col { max-width: 260px; }
+  .filename-col a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+    word-break: break-all;
+  }
+  .filename-col a:hover { text-decoration: underline; }
+
+  .source-col { max-width: 200px; }
+  .source-col a {
+    color: var(--color-muted-fg);
+    text-decoration: none;
+    font-size: 0.82rem;
+    word-break: break-all;
+  }
+  .source-col a:hover { text-decoration: underline; }
+
+  .url-col { max-width: 200px; }
+  .url-col a {
+    color: var(--color-muted-fg);
+    text-decoration: none;
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+  .url-col a:hover { color: var(--color-primary); }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-completed {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+  .status-pending {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  .time-col {
+    font-size: 0.8rem;
+    color: var(--color-muted-fg);
+    white-space: nowrap;
+  }
+
+  .batch-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  .batch-bar.show { display: flex; }
+
+  .batch-count {
+    font-size: 0.85rem;
+    color: var(--color-muted-fg);
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .pagination .btn {
+    padding: 8px 16px;
+    font-size: 0.82rem;
+  }
+
+  .page-info {
+    font-size: 0.85rem;
+    color: var(--color-muted-fg);
+    padding: 0 4px;
+  }
+
+  .page-size-select {
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    cursor: pointer;
+    outline: none;
+  }
+  .page-size-select:focus {
+    border-color: var(--color-primary);
+  }
+
+  .page-jump-input {
+    width: 52px;
+    padding: 6px 8px;
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    text-align: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    outline: none;
+  }
+  .page-jump-input:focus {
+    border-color: var(--color-primary);
+  }
+
+  /* States */
+  .state-message {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--color-muted-fg);
+  }
+
+  .state-message .icon {
+    display: block;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    stroke: #C7D2FE;
+  }
+
+  .state-message h3 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    margin-bottom: 4px;
+    color: var(--color-foreground);
+  }
+
+  .error-banner {
+    background: var(--color-destructive-light);
+    border: 1px solid var(--color-destructive);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    margin-bottom: 16px;
+    color: var(--color-destructive);
+    font-size: 0.88rem;
+  }
+
+  #loading-indicator {
+    display: none;
+    text-align: center;
+    padding: 32px;
+    color: var(--color-muted-fg);
+  }
+  #loading-indicator.show { display: block; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .toast {
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #fff;
+    background: var(--color-foreground);
+    box-shadow: var(--shadow);
+    transform: translateX(120%);
+    transition: transform 300ms ease;
+    pointer-events: auto;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.toast-success { background: var(--color-accent); }
+  .toast.toast-error { background: var(--color-destructive); }
+
+  @media (max-width: 900px) {
+    .search-bar { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="page-header">
+    <h1>历史解析记录</h1>
+    <button class="btn btn-secondary" onclick="location.href='/'">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      回到解析页面
+    </button>
+  </header>
+
+  <div id="error-banner" class="error-banner" style="display:none"></div>
+
+  <div class="toolbar">
+    <button class="btn btn-danger" onclick="clearAllRecords()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      清空所有记录
+    </button>
+    <div class="batch-bar" id="batch-bar">
+      <span class="batch-count" id="batch-count">已选 0 项</span>
+      <button class="btn btn-danger" onclick="batchDelete()">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        批量删除
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input
+      type="text"
+      class="search-input"
+      id="search-input"
+      placeholder="输入文件名搜索（支持模糊匹配）"
+      autocomplete="off"
+    >
+    <button class="btn btn-primary" id="btn-search" onclick="doSearch()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      搜索
+    </button>
+    <button class="btn btn-secondary" onclick="clearSearch()">重置</button>
+  </div>
+
+  <div id="loading-indicator">加载中...</div>
+
+  <div id="table-area"></div>
+
+  <div id="pagination" class="pagination"></div>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+let perPage = 20;
+let currentPage = 1;
+let currentSearch = '';
+
+var searchInput = document.getElementById('search-input');
+var tableArea = document.getElementById('table-area');
+var paginationEl = document.getElementById('pagination');
+var loadingEl = document.getElementById('loading-indicator');
+var errorBanner = document.getElementById('error-banner');
+var batchBar = document.getElementById('batch-bar');
+var batchCount = document.getElementById('batch-count');
+var toastContainer = document.getElementById('toast-container');
+
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doSearch();
+});
+
+/* Toast */
+function showToast(msg, type) {
+  type = type || '';
+  var el = document.createElement('div');
+  el.className = 'toast' + (type ? ' toast-' + type : '');
+  el.textContent = msg;
+  toastContainer.appendChild(el);
+  requestAnimationFrame(function() {
+    el.classList.add('show');
+  });
+  setTimeout(function() {
+    el.classList.remove('show');
+    setTimeout(function() { el.remove(); }, 300);
+  }, 1500);
+}
+
+/* Error banner */
+function showError(msg) {
+  errorBanner.textContent = msg;
+  errorBanner.style.display = 'block';
+}
+
+function hideError() {
+  errorBanner.style.display = 'none';
+}
+
+function showLoading() {
+  loadingEl.classList.add('show');
+  tableArea.innerHTML = '';
+  paginationEl.innerHTML = '';
+}
+
+function hideLoading() {
+  loadingEl.classList.remove('show');
+}
+
+async function loadHistory() {
+  hideError();
+  showLoading();
+  clearAllCheckboxes();
+
+  var params = new URLSearchParams({
+    page: currentPage,
+    per_page: perPage,
+  });
+  if (currentSearch) params.set('search', currentSearch);
+
+  try {
+    var resp = await fetch('/api/history?' + params.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    hideLoading();
+    renderTable(data);
+    renderPagination(data);
+  } catch (err) {
+    hideLoading();
+    showError('加载历史记录失败：' + err.message);
+    tableArea.innerHTML = '';
+    paginationEl.innerHTML = '';
+  }
+}
+
+function escHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatTime(isoStr) {
+  if (!isoStr) return '-';
+  var d = new Date(isoStr);
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+/* Checkbox */
+function clearAllCheckboxes() {
+  batchBar.classList.remove('show');
+  updateBatchCount();
+}
+
+function updateBatchCount() {
+  var checked = document.querySelectorAll('.row-cb:checked');
+  batchCount.textContent = '已选 ' + checked.length + ' 项';
+  if (checked.length > 0) {
+    batchBar.classList.add('show');
+  } else {
+    batchBar.classList.remove('show');
+  }
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-cb').forEach(function(rowCb) {
+    rowCb.checked = cb.checked;
+  });
+  updateBatchCount();
+}
+
+function onRowCheckboxChange() {
+  var allCbs = document.querySelectorAll('.row-cb');
+  var checkedCount = document.querySelectorAll('.row-cb:checked').length;
+  var selectAllCb = document.getElementById('select-all-cb');
+  if (selectAllCb) {
+    selectAllCb.checked = (checkedCount === allCbs.length);
+    selectAllCb.indeterminate = (checkedCount > 0 && checkedCount < allCbs.length);
+  }
+  updateBatchCount();
+}
+
+async function batchDelete() {
+  var checked = document.querySelectorAll('.row-cb:checked');
+  if (checked.length === 0) return;
+  if (!confirm('确定要删除选中的 ' + checked.length + ' 条记录吗？此操作不可撤销。')) return;
+
+  var ids = Array.from(checked).map(function(cb) { return parseInt(cb.value); });
+  try {
+    var resp = await fetch('/api/history/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids }),
+    });
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error || '批量删除失败');
+    showToast('已删除 ' + data.deleted_count + ' 条记录', 'success');
+  } catch (err) {
+    showToast('批量删除失败: ' + err.message, 'error');
+    return;
+  }
+  loadHistory();
+}
+
+/* Table */
+function renderTable(data) {
+  if (!data.results || data.results.length === 0) {
+    var msg = currentSearch
+      ? '未找到匹配 "' + escHtml(currentSearch) + '" 的记录'
+      : '暂无解析记录';
+    tableArea.innerHTML =
+      '<div class="state-message">' +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+          '<circle cx="12" cy="12" r="10"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>' +
+        '</svg>' +
+        '<h3>' + msg + '</h3>' +
+      '</div>';
+    return;
+  }
+
+  var html = '<div class="table-wrap"><table>';
+  html += '<thead><tr>' +
+    '<th class="cb-col"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAll(this)" title="全选"></th>' +
+    '<th class="num-col">#</th>' +
+    '<th class="thumb-col">预览</th>' +
+    '<th class="filename-col">文件名</th>' +
+    '<th class="source-col">来源 URL</th>' +
+    '<th class="url-col">原始 URL</th>' +
+    '<th>状态</th>' +
+    '<th class="time-col">解析时间</th>' +
+    '<th>操作</th>' +
+  '</tr></thead><tbody>';
+
+  var startNum = (data.page - 1) * perPage;
+  data.results.forEach(function(item, i) {
+    var thumbHtml = item.thumbnail_url
+      ? '<img src="' + escHtml(item.thumbnail_url) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+      : '';
+
+    var statusBadge = item.is_completed
+      ? '<span class="status-badge status-completed">已完成</span>'
+      : '<span class="status-badge status-pending">未完成</span>';
+
+    var doneBtn = item.is_completed
+      ? '<button class="btn-sm btn-done done" disabled>已完成</button>'
+      : '<button class="btn-sm btn-done" onclick="markDone(this, ' + item.id + ')">完成</button>';
+
+    html += '<tr>' +
+      '<td class="cb-col"><input type="checkbox" class="row-cb" value="' + item.id + '" onchange="onRowCheckboxChange()"></td>' +
+      '<td class="num-col">' + (startNum + i + 1) + '</td>' +
+      '<td class="thumb-col">' + thumbHtml + '</td>' +
+      '<td class="filename-col"><a href="' + escHtml(item.download_url) + '" target="_blank" rel="noopener">' + escHtml(item.filename) + '</a></td>' +
+      '<td class="source-col"><a href="' + escHtml(item.source_url) + '" target="_blank" rel="noopener" title="' + escHtml(item.source_url) + '">' + escHtml(item.source_url) + '</a></td>' +
+      '<td class="url-col"><a href="' + escHtml(item.original_url) + '" target="_blank" rel="noopener" title="' + escHtml(item.original_url) + '">' + escHtml(item.original_url) + '</a></td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td class="time-col">' + formatTime(item.created_at) + '</td>' +
+      '<td class="action-cell">' +
+        '<button class="btn-sm btn-motrix" onclick="sendToMotrix(this)" data-url="' + escHtml(item.download_url) + '" data-filename="' + escHtml(item.filename) + '">Motrix</button>' +
+        '<button class="btn-sm btn-copy" onclick="copyAddress(this)" data-url="' + escHtml(item.download_url) + '">复制</button>' +
+        '<button class="btn-sm btn-download" onclick="downloadFile(this)" data-url="' + escHtml(item.download_url) + '" data-filename="' + escHtml(item.filename) + '">下载</button>' +
+        doneBtn +
+        '<button class="btn-sm btn-delete" onclick="deleteRecord(this, ' + item.id + ')">删除</button>' +
+      '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  tableArea.innerHTML = html;
+}
+
+/* Pagination */
+function renderPagination(data) {
+  var html = '';
+
+  // 每页条数
+  html += '<select class="page-size-select" onchange="changePerPage(this.value)">';
+  [20, 50, 100].forEach(function(n) {
+    html += '<option value="' + n + '"' + (perPage === n ? ' selected' : '') + '>' + n + ' 条/页</option>';
+  });
+  html += '</select>';
+
+  // 上一页
+  html += '<button class="btn btn-secondary" onclick="goToPage(' + (data.page - 1) + ')"' + (data.page <= 1 ? ' disabled' : '') + '>上一页</button>';
+
+  // 页码跳转
+  html += '<span class="page-info">第 <input type="text" class="page-jump-input" id="page-jump-input" value="' + data.page + '" onkeydown="onPageJumpKey(event)" onblur="onPageJumpBlur()"> / ' + data.total_pages + ' 页，共 ' + data.total + ' 条</span>';
+
+  // 下一页
+  html += '<button class="btn btn-secondary" onclick="goToPage(' + (data.page + 1) + ')"' + (data.page >= data.total_pages ? ' disabled' : '') + '>下一页</button>';
+
+  paginationEl.innerHTML = html;
+}
+
+function changePerPage(n) {
+  perPage = parseInt(n);
+  currentPage = 1;
+  loadHistory();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToPage(page) {
+  currentPage = page;
+  loadHistory();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function onPageJumpKey(e) {
+  if (e.key === 'Enter') doPageJump();
+}
+
+function onPageJumpBlur() {
+  doPageJump();
+}
+
+function doPageJump() {
+  var input = document.getElementById('page-jump-input');
+  if (!input) return;
+  var targetPage = parseInt(input.value);
+  if (isNaN(targetPage) || targetPage < 1) {
+    input.value = currentPage;
+    return;
+  }
+  var infoText = input.parentElement.textContent || '';
+  var m = infoText.match(/\/\s*(\d+)\s*页/);
+  if (m) {
+    var totalPages = parseInt(m[1]);
+    if (targetPage > totalPages) targetPage = totalPages;
+  }
+  input.value = targetPage;
+  if (targetPage !== currentPage) {
+    goToPage(targetPage);
+  }
+}
+
+function doSearch() {
+  currentSearch = searchInput.value.trim();
+  currentPage = 1;
+  loadHistory();
+}
+
+function clearSearch() {
+  searchInput.value = '';
+  currentSearch = '';
+  currentPage = 1;
+  loadHistory();
+}
+
+/* Actions */
+async function markDone(btn, resultId) {
+  try {
+    var resp = await fetch('/api/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: resultId }),
+    });
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error || '请求失败');
+  } catch (err) {
+    showToast('更新失败: ' + err.message, 'error');
+    return;
+  }
+
+  btn.textContent = '已完成';
+  btn.classList.add('done');
+  btn.disabled = true;
+
+  var statusTd = btn.closest('td').previousElementSibling;
+  statusTd.innerHTML = '<span class="status-badge status-completed">已完成</span>';
+  showToast('已标记为完成', 'success');
+}
+
+async function sendToMotrix(btn) {
+  var url = btn.dataset.url;
+  var filename = btn.dataset.filename;
+  btn.disabled = true;
+  try {
+    var resp = await fetch('http://127.0.0.1:16800/jsonrpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now() + Math.random(),
+        method: 'aria2.addUri',
+        params: [[url], { out: filename }],
+      }),
+    });
+    var data = await resp.json();
+    if (data.result) {
+      showToast('已发送到 Motrix', 'success');
+    } else {
+      throw new Error(data.error?.message || 'Motrix 响应异常');
+    }
+  } catch (err) {
+    showToast('发送失败: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function copyAddress(btn) {
+  var url = btn.dataset.url;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('已复制', 'success');
+  } catch (err) {
+    showToast('复制失败，请手动复制', 'error');
+  }
+}
+
+function downloadFile(btn) {
+  var url = btn.dataset.url;
+  var filename = btn.dataset.filename;
+  btn.disabled = true;
+  showToast('开始下载...');
+  fetch(url).then(function(resp) { return resp.blob(); }).then(function(blob) {
+    var blobUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+    showToast('下载完成', 'success');
+  }).catch(function() {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('已触发下载', 'success');
+  }).finally(function() {
+    btn.disabled = false;
+  });
+}
+
+async function deleteRecord(btn, resultId) {
+  if (!confirm('确定要删除这条记录吗？')) return;
+  try {
+    var resp = await fetch('/api/history/' + resultId, { method: 'DELETE' });
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error || '删除失败');
+    showToast('已删除', 'success');
+  } catch (err) {
+    showToast('删除失败: ' + err.message, 'error');
+    return;
+  }
+  loadHistory();
+}
+
+async function clearAllRecords() {
+  if (!confirm('确定要清空所有解析记录吗？此操作不可撤销。')) return;
+  try {
+    var resp = await fetch('/api/history/clear', { method: 'DELETE' });
+    var data = await resp.json();
+    if (!data.success) throw new Error(data.error || '清空失败');
+    showToast('已清空 ' + data.deleted_count + ' 条记录', 'success');
+  } catch (err) {
+    showToast('清空失败: ' + err.message, 'error');
+    return;
+  }
+  currentPage = 1;
+  loadHistory();
+}
+
+// 初始加载
+loadHistory();
+</script>
+</body>
+</html>

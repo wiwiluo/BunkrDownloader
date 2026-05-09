@@ -14,6 +14,9 @@
 - Provides progress indication during downloads.
 - Automatically creates a directory structure for organized storage.
 - Logs URLs that encounter errors for troubleshooting.
+- Web URL 解析器，通过浏览器解析 Bunkr 链接并获取真实下载地址。
+- 解析结果自动存入 PostgreSQL 数据库，支持历史记录查询、分页、模糊搜索。
+- URL 去重：已成功解析的 URL 不会重复保存。
 
 ## Dependencies
 
@@ -21,6 +24,9 @@
 - `BeautifulSoup` (bs4) - for HTML parsing
 - `requests` - for HTTP requests
 - `rich` - for progress display in the terminal
+- `Flask` - for the web resolver server
+- `psycopg2-binary` - for PostgreSQL database connection
+- `cryptography` - for database password encryption
 
 <details>
 
@@ -43,11 +49,21 @@ project-root/
 │ │ └── summary_manager.py   # Manages final summaries
 │ ├── bunkr_utils.py         # Utilities for checking Bunkr status
 │ ├── config.py              # Manages constants and settings used across the project
+│ ├── crypto_utils.py        # Database password Fernet encryption/decryption
+│ ├── database.py            # PostgreSQL connection pool and CRUD operations
 │ ├── file_utils.py          # Utilities for managing file operations
 │ ├── general_utils.py       # Miscellaneous utility functions
 │ └── url_utils.py           # Utilities for Bunkr URLs
+├── templates/
+│ ├── index.html             # Web resolver main page (SSE-driven single page app)
+│ └── history.html           # History query page with search and pagination
+├── scripts/
+│ └── encrypt_password.py    # CLI tool to encrypt database password for deployment
+├── db_code/
+│ └── init_postgres.sql      # PostgreSQL DDL reference script
 ├── downloader.py            # Module for initiating downloads from specified Bunkr URLs
 ├── main.py                  # Main script to run the downloader
+├── server.py                # Flask web server with SSE streaming and DB integration
 ├── URLs.txt                 # Text file listing album URLs to be downloaded
 └── session_log.txt          # Log file for recording session details
 ```

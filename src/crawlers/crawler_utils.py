@@ -153,3 +153,23 @@ async def get_download_info(item_url: str, item_soup: BeautifulSoup) -> tuple:
     )
     formatted_item_filename = format_item_filename(item_filename, url_based_filename)
     return item_download_link, formatted_item_filename
+
+
+def get_item_thumbnail(item_soup: BeautifulSoup) -> str | None:
+    """从 HTML 中提取视频封面图 URL。
+
+    优先从 og:image meta 标签提取，备选从 videoCoverUrl JS 变量提取。
+    """
+    # 优先：Open Graph og:image meta 标签
+    og_image = item_soup.find("meta", property="og:image")
+    if og_image and og_image.get("content"):
+        return og_image["content"]
+
+    # 备选：videoCoverUrl JavaScript 变量
+    for script in item_soup.find_all("script"):
+        if script.string and "videoCoverUrl" in script.string:
+            match = re.search(r'videoCoverUrl\s*=\s*"([^"]+)"', script.string)
+            if match:
+                return match.group(1).replace("\\/", "/")
+
+    return None
