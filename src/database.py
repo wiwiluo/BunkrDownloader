@@ -7,7 +7,9 @@
 from __future__ import annotations
 
 import logging
+from configparser import ConfigParser
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 import psycopg2
@@ -16,13 +18,26 @@ from psycopg2.pool import SimpleConnectionPool
 
 from src.crypto_utils import get_db_password
 
-# 数据库连接配置
-DB_CONFIG = {
-    "host": "your_database_host_ip",
-    "port": 5423,
-    "user": "your_database_username",
-    "database": "bunkr_downloader",
-}
+# 配置文件路径（项目根目录）
+_CONFIG_PATH = Path(__file__).parent.parent / "db_config.ini"
+
+
+def _load_db_config() -> dict[str, str | int]:
+    """从 INI 配置文件读取数据库连接参数。"""
+    if not _CONFIG_PATH.exists():
+        raise FileNotFoundError(f"数据库配置文件不存在：{_CONFIG_PATH}")
+    parser = ConfigParser()
+    parser.read(_CONFIG_PATH, encoding="utf-8")
+    section = parser["postgresql"]
+    return {
+        "host": section["host"],
+        "port": section.getint("port"),
+        "user": section["user"],
+        "database": section["database"],
+    }
+
+
+DB_CONFIG = _load_db_config()
 
 # 连接池（全局单例）
 _pool: SimpleConnectionPool | None = None
