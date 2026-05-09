@@ -130,7 +130,7 @@ python3 downloader.py <bunkr_album_url> --ignore <ignore_list>
 This feature is particularly useful when you want to skip files with certain extensions, such as `.zip` files. For instance:
 
 ```bash
-python3 downloader.py https://bunkr.si/a/PUK068QE --ignore .zip
+python3 downloader.py https://bunkr.si/a/xxxxxx --ignore .zip
 ```
 
 ## Include List
@@ -148,7 +148,7 @@ python3 downloader.py <bunkr_album_url> --include <include_list>
 ### Example
 
 ```bash
-python3 downloader.py https://bunkr.si/a/PUK068QE --include FullSizeRender
+python3 downloader.py https://bunkr.si/a/xxxxxxxx --include FullSizeRender
 ```
 
 ## Batch Download
@@ -163,9 +163,9 @@ This script reads URLs from a file named `URLs.txt` and downloads each one using
 - Example of `URLs.txt`:
 
 ```
-https://bunkr.si/a/PUK068QE
-https://bunkr.fi/f/gBrv5f8tAGlGW
-https://bunkr.fi/a/kVYLh49Q
+https://bunkr.si/a/xxxx
+https://bunkr.fi/f/yyyy
+https://bunkr.fi/a/zzzz
 ```
 
 - Ensure that each URL is on its own line without any extra spaces.
@@ -231,10 +231,64 @@ python3 downloader.py <bunkr_url> --max-retries 3
 ### Example:
 
 ```bash
-python3 downloader.py https://bunkr.si/a/PUK068QE --max-retries 3
+python3 downloader.py https://bunkr.si/a/xxxxxxx --max-retries 3
 ```
 
 ## Logging
 
 The application logs any issues encountered during the download process in a file named `session.log`.
 Check this file for any URLs that may have been blocked or had errors.
+
+## Web 解析器
+
+启动 Flask Web 服务器，在浏览器中粘贴 Bunkr URL 即可获取真实下载地址。
+
+### 启动
+
+```bash
+# 前台启动（开发调试）
+python server.py
+# 浏览器打开 http://127.0.0.1:5000
+```
+
+### 数据库配置
+
+解析结果自动保存到 PostgreSQL 数据库，需先配置加密密钥。
+
+```bash
+# 1. 生成加密密钥
+python scripts/encrypt_password.py
+
+# 2. 将输出的 export 命令写入 ~/.zshrc
+export BUNKR_DB_KEY='<生成密钥>'
+export BUNKR_DB_PASSWORD_ENC='<加密后的密码>'
+source ~/.zshrc
+
+# 3. 在 PostgreSQL 中创建数据库
+# psql -h <your_database_host_ip> -p 5243 -U <your_database_username> -c "CREATE DATABASE bunkr_downloader;"
+
+# 4. 启动（表结构自动创建，数据库不可用时自动降级运行）
+python server.py
+```
+
+### 后台运行
+
+```bash
+# 后台启动（需先加载环境变量）
+source ~/.zshrc && nohup env BUNKR_DB_KEY="$BUNKR_DB_KEY" BUNKR_DB_PASSWORD_ENC="$BUNKR_DB_PASSWORD_ENC" .venv/bin/python server.py > /dev/null 2>&1 &
+
+# 停止后台服务
+lsof -i :5000
+kill -9 <PID>
+```
+
+### 功能说明
+
+| 功能 | 说明 |
+|---|---|
+| URL 解析 | 支持专辑（/a/）和单文件（/f/ /i/ /v/），SSE 实时推送进度 |
+| 操作按钮 | 每条结果支持 Motrix 下载、复制地址、直接下载、标记完成 |
+| 历史记录 | 点击"历史记录查询"在新标签页打开，支持分页、文件名模糊搜索、时间降序 |
+| 记录管理 | 支持单条删除和清空所有记录 |
+| URL 去重 | 已成功解析的 URL 不会重复保存 |
+| 降级运行 | 数据库连接失败时，解析功能不受影响，仅数据库功能不可用 |
