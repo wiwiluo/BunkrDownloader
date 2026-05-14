@@ -5,10 +5,14 @@
 """
 
 from __future__ import annotations
+from dotenv import load_dotenv
 
 import os
 
 from cryptography.fernet import Fernet
+
+# 加载环境变量
+load_dotenv()
 
 # 环境变量名称常量
 ENV_KEY = "BUNKR_DB_KEY"
