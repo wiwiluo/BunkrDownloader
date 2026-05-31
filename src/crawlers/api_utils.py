@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING
 
 import aiohttp
-from yarl import URL
+from urllib.parse import urlparse
 
 from src.config import BUNKR_API, JS_VARS_REGEX
 
@@ -41,7 +41,7 @@ async def get_api_response(soup: BeautifulSoup | None = None) -> str | None:
 
     async with (
         aiohttp.ClientSession() as session,
-        session.get(URL(BUNKR_API), params={"path": URL(js_cdn).path}) as response,
+        session.get(BUNKR_API, params={"path": urlparse(js_cdn).path}) as response,
     ):
         sign_data = await response.json()
 

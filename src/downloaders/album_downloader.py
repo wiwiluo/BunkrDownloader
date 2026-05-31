@@ -101,7 +101,6 @@ class AlbumDownloader:
         item_soup = None
         for attempt in range(1, max_retries + 1):
             item_soup = await fetch_page(item_page)
-
             if item_soup is not None:
                 return item_soup
 
@@ -109,7 +108,6 @@ class AlbumDownloader:
                 event="Fetch retry",
                 details=f"Attempt {attempt}/{max_retries} failed for: {item_page}",
             )
-
             if attempt < max_retries:
                 await asyncio.sleep(base_delay * attempt)
 
