@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 import aiohttp
-from urllib.parse import urlparse
 
 from src.config import BUNKR_API, JS_VARS_REGEX
 
