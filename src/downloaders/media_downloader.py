@@ -110,7 +110,7 @@ class MediaDownloader:
         except requests.exceptions.ConnectionError:
             self.live_manager.update_log(
                 event="Connection error",
-                details="Read timed out for {self.download_info.filename}",
+                details=f"Read timed out for {self.download_info.filename}",
             )
             failed_download = True
 

@@ -5,16 +5,15 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+import aiohttp
+from bs4 import BeautifulSoup
 
 from src.file_utils import remove_invalid_characters
 from src.general_utils import fetch_page
 from src.url_utils import get_url_based_filename
 
-from .api_utils import decrypt_url, get_api_response
-
-if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+from .api_utils import get_api_response
 
 
 def extract_next_album_pages(initial_soup: BeautifulSoup, url: str) -> list[str] | None:
@@ -52,7 +51,9 @@ def extract_item_pages(soup: BeautifulSoup, host_page: str) -> list[str] | None:
 
 
 async def extract_all_album_item_pages(
-    initial_soup: BeautifulSoup, host_page: str, url: str,
+    initial_soup: BeautifulSoup,
+    host_page: str,
+    url: str,
 ) -> list[str]:
     """Collect item page links from an album, including pagination."""
     if initial_soup is None:
@@ -84,16 +85,18 @@ async def get_item_download_link(
     item_url: str,
     soup: BeautifulSoup | None = None,
 ) -> str | None:
-    """Retrieve the download link for a specific item from its HTML content."""
-    api_response = get_api_response(item_url, soup=soup)
+    """Retrieve a signed direct download URL for a Bunkr item page."""
+    if soup is None:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(item_url) as response,
+        ):
+            html = await response.text()
 
-    if api_response is None:
-        logging.warning(
-            "API response is None for %s; cannot decrypt download link.", item_url,
-        )
-        return None
+        soup = BeautifulSoup(html, "html.parser")
 
-    return decrypt_url(api_response)
+    # Get the signed URL
+    return await get_api_response(soup)
 
 
 def decrypt_cf_email(cf_email_hex: str) -> str:
