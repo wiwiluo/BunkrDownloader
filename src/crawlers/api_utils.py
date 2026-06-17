@@ -30,18 +30,11 @@ _DEFAULT_TIMEOUT = 30
 
 def unescape_js_path(value: str) -> str:
     """Normalize JavaScript-escaped URL fragments."""
-    return (
-        value.replace(r"\/", "/")
-        .replace(r"\\", "\\")
-    )
+    return value.replace(r"\/", "/").replace(r"\\", "\\")
 
 
 def extract_page_vars(soup: BeautifulSoup) -> dict[str, str]:
-    """Extract CDN/runtime variables from inline script tags.
-
-    Looks for the Bunkr runtime configuration script and extracts
-    key-value pairs such as jsCDN.
-    """
+    """Extract CDN/runtime variables from inline script tags."""
     for script in soup.find_all("script"):
         if script.string and "var jsCDN" in script.string:
             matches = JS_VARS_COMP.findall(script.string)
@@ -49,6 +42,7 @@ def extract_page_vars(soup: BeautifulSoup) -> dict[str, str]:
                 key: unescape_js_path(value).strip("'\"")
                 for key, value in matches
             }
+
     return {}
 
 
@@ -57,14 +51,13 @@ def extract_file_id(soup: BeautifulSoup) -> str | None:
     script = soup.find("script")
     if not script:
         return None
+
     return script.get("data-file-id")
 
 
 async def get_download_response(
     session: aiohttp.ClientSession,
     file_id: str,
-    max_retries: int = _DEFAULT_MAX_RETRIES,
-    base_delay: float = _DEFAULT_BASE_DELAY,
 ) -> str | None:
     """Fetch unsigned download URL for non-landing page assets.
 
@@ -74,7 +67,7 @@ async def get_download_response(
     Returns None instead of raising if all attempts fail, so the caller
     can skip the file gracefully without aborting the whole session.
     """
-    for attempt in range(1, max_retries + 1):
+    for attempt in range(1, _DEFAULT_MAX_RETRIES + 1):
         try:
             async with session.post(
                 DOWNLOAD_API,
@@ -84,8 +77,8 @@ async def get_download_response(
                 response.raise_for_status()
                 data = await response.json()
 
-            # Guard against unexpected API response shapes so that a schema
-            # change raises a warning rather than an unhandled KeyError.
+            # Guard against unexpected API response shapes so that a schema change
+            # raises a warning rather than an unhandled KeyError.
             base_url = data.get("mediafiles")
             path = data.get("path")
 
@@ -96,9 +89,8 @@ async def get_download_response(
             return urlunparse(parsed_url._replace(path=path))
 
         except (aiohttp.ClientError, asyncio.TimeoutError):
-            if attempt < max_retries:
-                delay = base_delay * (2 ** (attempt - 1))
-                await asyncio.sleep(delay)
+            if attempt < _DEFAULT_MAX_RETRIES:
+                await asyncio.sleep(_DEFAULT_BASE_DELAY * (2 ** (attempt - 1)))
 
     return None
 
@@ -107,8 +99,6 @@ async def get_api_response(
     session: aiohttp.ClientSession,
     item_url: str,
     soup: BeautifulSoup | None = None,
-    max_retries: int = _DEFAULT_MAX_RETRIES,
-    base_delay: float = _DEFAULT_BASE_DELAY,
 ) -> str | None:
     """Resolve and sign a Bunkr media URL using CDN or fallback pipeline.
 
@@ -133,15 +123,10 @@ async def get_api_response(
     if not cdn_url and not unsigned_url:
         return None
 
-    source_url = unsigned_url or item_url
-    media_slug = PurePosixPath(urlparse(source_url).path).name
-    media_path = (
-        urlparse(cdn_url).path
-        if cdn_url
-        else f"/storage/media/{media_slug}"
-    )
+    media_slug = PurePosixPath(urlparse(unsigned_url or item_url).path).name
+    media_path = urlparse(cdn_url).path if cdn_url else f"/storage/media/{media_slug}"
 
-    for attempt in range(1, max_retries + 1):
+    for attempt in range(1, _DEFAULT_MAX_RETRIES + 1):
         try:
             async with session.get(
                 BUNKR_API,
@@ -155,15 +140,14 @@ async def get_api_response(
             expires_at = data.get("ex")
             base_url = cdn_url or unsigned_url
 
-            if token and expires and base_url:
+            if token and expires_at and base_url:
                 return f"{base_url}?token={token}&ex={expires_at}"
 
-            # API responded but returned no token — return plain CDN URL.
+            # API responded but returned no token -> return plain CDN URL.
             return cdn_url
 
         except (aiohttp.ClientError, asyncio.TimeoutError):
-            if attempt < max_retries:
-                delay = base_delay * (2 ** (attempt - 1))
-                await asyncio.sleep(delay)
+            if attempt < _DEFAULT_MAX_RETRIES:
+                await asyncio.sleep(_DEFAULT_BASE_DELAY * (2 ** (attempt - 1)))
 
     return None
