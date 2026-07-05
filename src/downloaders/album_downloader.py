@@ -3,10 +3,12 @@
 This module provides features for managing progress, handling failed downloads, and
 integrating with live task displays.
 """
+from __future__ import annotations
 
 import asyncio
 from asyncio import Semaphore
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.config import (
     MAX_RETRIES,
@@ -20,10 +22,12 @@ from src.config import (
 from src.crawlers.crawler_utils import get_download_info
 from src.file_utils import truncate_filename
 from src.general_utils import fetch_page
-from src.managers.live_manager import LiveManager
 from src.managers.state_manager import save_album_state
 
 from .media_downloader import MediaDownloader
+
+if TYPE_CHECKING:
+    from src.managers.live_manager import LiveManager
 
 
 class AlbumDownloader:
@@ -36,18 +40,15 @@ class AlbumDownloader:
         live_manager: LiveManager,
         cached_items: dict[str, dict] | None = None,
     ) -> None:
-        """Initialize the AlbumDownloader instance.
-
-        Args:
-            cached_items: Per-item state persisted from a previous run for
-                this same album (keyed by item page URL), used to skip
-                already-completed items without any network round-trip.
-        """
+        """Initialize the AlbumDownloader instance."""
         self.session_info = session_info
         self.album_info = album_info
         self.live_manager = live_manager
         self.failed_downloads = []
         self.unresolved_failures = 0
+        # Per-item state persisted from a previous run for this same album (keyed by
+        # item page URL), used to skip already-completed items without any network
+        # round-trip.
         self.cached_items = dict(cached_items or {})
         self._state_lock = asyncio.Lock()
 
@@ -60,9 +61,9 @@ class AlbumDownloader:
     ) -> None:
         """Handle the download of an individual item in the album."""
         async with semaphore:
-            # Fast path: this item was confirmed downloaded on a previous
-            # run and the file is still on disk — skip entirely without
-            # fetching the item page or calling the signing API.
+            # Fast path: this item was confirmed downloaded on a previous run and the
+            # file is still on disk -- skip entirely without fetching the item page or
+            # calling the signing API.
             cached = self.cached_items.get(item_page)
             if cached and cached.get("status") == "completed":
                 cached_filename = cached.get("filename", "")
@@ -121,7 +122,7 @@ class AlbumDownloader:
                 )
 
             else:
-                # URL could not be resolved after all retries — report as failed
+                # URL could not be resolved after all retries -- report as failed
                 # so the user knows which files need attention. There is no
                 # download_link to retry with, so this counts as permanent.
                 self.live_manager.update_log(
@@ -141,9 +142,10 @@ class AlbumDownloader:
         """Handle the album download.
 
         Returns:
-            True if the album ended with at least one permanently failed
-            item (after the extra retry pass), False if every item either
-            succeeded or was intentionally skipped.
+            True if the album ended with at least one permanently failed item
+            (after the extra retry pass), False if every item either succeeded
+            or was intentionally skipped.
+
         """
         num_tasks = len(self.album_info.item_pages)
         self.live_manager.add_overall_task(
@@ -172,7 +174,7 @@ class AlbumDownloader:
         """Record this item's outcome and persist the album state to disk.
 
         Marks the item "completed" only when the download did not fail AND
-        the file is verifiably present on disk — this stays accurate
+        the file is verifiably present on disk -- this stays accurate
         regardless of *why* the download call returned success (a fresh
         download, an already-existed skip, or an offline-domain skip all
         funnel through here).
@@ -230,7 +232,7 @@ class AlbumDownloader:
             session_info=self.session_info,
             download_info=failed_download_info,
             live_manager=self.live_manager,
-            retries=1,  # Retry once for failed downloads
+            retries=1,                 # Retry once for failed downloads
             has_external_retry=False,  # this is the last chance, finalize either way
         )
         # Run the synchronous download function in a separate thread
@@ -240,10 +242,11 @@ class AlbumDownloader:
         """Retry every failed download once more.
 
         Returns:
-            The subset of failed_downloads that failed again on this retry
-            pass (i.e. permanently failed).
+            The subset of failed_downloads that permanently failed again on this retry.
+
         """
         still_failed = []
+
         for data in self.failed_downloads:
             failed_download_info = DownloadInfo(
                 item_url=data["item_url"],

@@ -55,26 +55,21 @@ class MediaDownloader:
         *,
         has_external_retry: bool = False,
     ) -> None:
-        """Initialize the MediaDownloader instance.
-
-        Args:
-            has_external_retry: True when a caller (e.g. AlbumDownloader) will
-                retry this item again later if it fails here. When False
-                (the default, used for standalone single-file URLs), a
-                failure is treated as final immediately since nothing else
-                will retry it.
-        """
+        """Initialize the MediaDownloader instance."""
         self.session_info = session_info
         self.download_info = download_info
         self.live_manager = live_manager
         self.retries = retries
+        # True when a caller (e.g. AlbumDownloader) will retry this item again later if
+        # it fails. When False (the default, used for standalone single-file URLs), a
+        # failure is treated as final immediately since nothing else will retry it.
         self.has_external_retry = has_external_retry
 
     def attempt_download(self, final_path: str) -> bool:
         """Attempt to download the file, using parallel chunks when possible.
 
         If the server supports byte-range requests and the file is large enough,
-        the download is split into *num_connections* parallel chunks (each saved
+        the download is split into num_connections parallel chunks (each saved
         as a .partN file to allow resuming).  Falls back to the original
         single-connection stream when chunking is not applicable.
 
@@ -96,7 +91,7 @@ class MediaDownloader:
                 )
 
                 if should_use_parallel_download(
-                    supports_range, content_length, num_connections,
+                    content_length, num_connections, supports_range=supports_range,
                 ):
                     # .partN files are preserved on failure so a re-attempt
                     # (here or on a future run) resumes instead of restarting.
@@ -114,15 +109,16 @@ class MediaDownloader:
                         return False
 
                     # Persistent failure after CHUNK_MAX_RETRIES internal
-                    # attempts — consume one outer retry slot, same as a
+                    # attempts -- consume one outer retry slot, same as a
                     # request-level failure on the fallback path below.
                     if not self._retry_with_backoff(
                         attempt, event="Retrying chunked download",
                     ):
                         break
+
                     continue
 
-                # ── Fallback: single-connection streaming download ──────────
+                # Fallback: single-connection streaming download
                 response = requests.get(
                     self.download_info.download_link,
                     stream=True,
@@ -150,9 +146,10 @@ class MediaDownloader:
         """Handle the download process.
 
         Returns:
-            True if the item ultimately failed (and no one else will retry
-            it), False if it succeeded, was skipped, or will be retried
-            later by an external caller (has_external_retry=True).
+            True if the item ultimately failed (and no one else will retry it),
+            False if it succeeded, was skipped, or will be retried later by an external
+            caller (has_external_retry=True).
+
         """
         is_final_attempt = not self.has_external_retry
         is_offline = subdomain_is_offline(
@@ -312,7 +309,7 @@ class MediaDownloader:
         """Handle a failed download after all retry attempts.
 
         Always returns True (failed). When this is not the final attempt,
-        only a log line is emitted — the caller (AlbumDownloader) already
+        only a log line is emitted -- the caller (AlbumDownloader) already
         has everything it needs to retry the item itself and is expected
         to do so. The session log is only written on the final attempt,
         since that is the only point at which the outcome is permanent.

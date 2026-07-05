@@ -37,6 +37,7 @@ def get_chunk_size(file_size: int) -> int:
     for threshold, chunk_size in THRESHOLDS:
         if file_size < threshold:
             return chunk_size
+
     return LARGE_FILE_CHUNK_SIZE
 
 
@@ -84,35 +85,31 @@ def save_file_with_progress(
     return True
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ==========================
 # Parallel chunked download
-# ─────────────────────────────────────────────────────────────────────────────
-
+# ==========================
 def detect_range_support(
-    url: str, headers: dict[str, str],
+    url: str,
+    headers: dict[str, str],
 ) -> tuple[bool, int]:
-    """Send a HEAD request to detect Range support and retrieve the file size.
-
-    Returns:
-        supports_range: True if the server accepts byte-range requests.
-        content_length: Total file size in bytes, or -1 if unknown.
-    """
+    """Send a HEAD request to detect Range support and retrieve the file size."""
     try:
         response = requests.head(url, headers=headers, timeout=10)
         response.raise_for_status()
-        supports_range = (
-            response.headers.get("Accept-Ranges", "").lower() == "bytes"
-        )
+        supports_range = response.headers.get("Accept-Ranges", "").lower() == "bytes"
         content_length = int(response.headers.get("Content-Length", -1))
-        return supports_range, content_length
+
     except (RequestException, ValueError):
         return False, -1
 
+    return supports_range, content_length
+
 
 def should_use_parallel_download(
-    supports_range: bool,
     content_length: int,
     num_connections: int,
+    *,
+    supports_range: bool,
 ) -> bool:
     """Return True when conditions are met for a parallel chunked download.
 
@@ -122,9 +119,7 @@ def should_use_parallel_download(
     - More than one connection is requested.
     """
     return (
-        supports_range
-        and content_length >= MIN_PARALLEL_SIZE
-        and num_connections > 1
+        supports_range and content_length >= MIN_PARALLEL_SIZE and num_connections > 1
     )
 
 
@@ -134,27 +129,33 @@ def _compute_unit_ranges(
 ) -> list[tuple[int, int]]:
     """Split the file into many small work units for work-stealing download.
 
-    The file is divided into roughly UNITS_PER_CONNECTION times more units
-    than worker threads, each sized between MIN_WORK_UNIT_SIZE and
-    MAX_WORK_UNIT_SIZE. Worker threads pull units from a shared queue as
-    they finish, so a slow connection only delays its own next unit instead
-    of blocking threads that finished early.
+    The file is divided into roughly UNITS_PER_CONNECTION times more units than
+    worker threads, each sized between MIN_WORK_UNIT_SIZE and MAX_WORK_UNIT_SIZE.
+    Worker threads pull units from a shared queue as they finish, so a slow connection
+    only delays its own next unit instead of blocking threads that finished early.
 
-    The last unit absorbs any remainder so the entire file is always
-    covered.
+    The last unit absorbs any remainder so the entire file is always covered.
     """
     target_units = max(num_connections * UNITS_PER_CONNECTION, 1)
     raw_unit_size = content_length / target_units
-    unit_size = int(min(max(raw_unit_size, MIN_WORK_UNIT_SIZE), MAX_WORK_UNIT_SIZE))
-    unit_size = max(unit_size, 1)
-
-    num_units = max(-(-content_length // unit_size), 1)  # ceil division
-
+    # unit_size = int(min(max(raw_unit_size, MIN_WORK_UNIT_SIZE), MAX_WORK_UNIT_SIZE))
+    # unit_size = max(unit_size, 1)
+    # num_units = max(-(-content_length // unit_size), 1)  # ceil division
+    unit_size = max(
+        MIN_WORK_UNIT_SIZE,
+        min(int(raw_unit_size), MAX_WORK_UNIT_SIZE),
+        1,
+    )
+    num_units = (content_length + unit_size - 1) // unit_size  # ceil division
     ranges = []
-    for i in range(num_units):
-        start = i * unit_size
-        end = (start + unit_size - 1) if i < num_units - 1 else content_length - 1
-        ranges.append((start, end))
+
+    for indx in range(num_units):
+        start_byte = indx * unit_size
+        end_byte = (
+            (start_byte + unit_size - 1) if indx < num_units - 1 else content_length - 1
+        )
+        ranges.append((start_byte, end_byte))
+
     return ranges
 
 
@@ -170,11 +171,10 @@ def _load_or_create_plan(
 ) -> list[tuple[int, int]]:
     """Load a previously persisted chunk plan, or compute and save a new one.
 
-    Persisting the plan ensures that resuming a download after changing
-    --connections (or across separate runs) reuses the exact same byte
-    ranges. Without this, a stale .partN file could coincidentally match
-    the expected size of a *different* range under a new plan and be
-    silently merged as corrupt data.
+    Persisting the plan ensures that resuming a download after changing --connections
+    (or across separate runs) reuses the exact same byte ranges. Without this, a
+    stale .partN file could coincidentally match the expected size of a different
+    range under a new plan and be silently merged as corrupt data.
     """
     plan_path = _plan_path(base_path)
 
@@ -183,15 +183,18 @@ def _load_or_create_plan(
             data = json.loads(plan_path.read_text(encoding="utf-8"))
             if data.get("content_length") == content_length:
                 return [tuple(pair) for pair in data["ranges"]]
+
         except (json.JSONDecodeError, KeyError, OSError):
-            pass  # Corrupt or unreadable metadata — recompute below.
+            pass  # Corrupt or unreadable metadata -- recompute below.
 
     ranges = _compute_unit_ranges(content_length, num_connections)
+
     try:
         plan_path.write_text(
             json.dumps({"content_length": content_length, "ranges": ranges}),
             encoding="utf-8",
         )
+
     except OSError:
         logging.warning("Could not persist chunk plan for %s", base_path)
 
@@ -205,13 +208,12 @@ def _chunk_path(base_path: Path, index: int) -> Path:
 
 def _attempt_chunk_once(
     url: str,
-    start: int,
-    end: int,
+    byte_range: tuple[int, int],
     path: Path,
     headers: dict[str, str],
-    on_progress,
+    on_progress: callable,
     rate_limiter: RateLimiter | None = None,
-) -> bool:  # pylint: disable=too-many-arguments,too-many-positional-arguments
+) -> bool:
     """Make a single attempt to download one byte-range chunk to disk.
 
     Any bytes written during a failed attempt are credited back (negative
@@ -220,66 +222,65 @@ def _attempt_chunk_once(
 
     Returns:
         True on failure, False on success.
+
     """
-    expected = end - start + 1
-    chunk_headers = {**headers, "Range": f"bytes={start}-{end}"}
+    start_byte = byte_range[0]
+    end_byte = byte_range[1]
+
+    expected = end_byte - start_byte + 1
+    chunk_headers = {**headers, "Range": f"bytes={start_byte}-{end_byte}"}
     written = 0
 
     try:
         with requests.get(
-            url, headers=chunk_headers, stream=True, timeout=30,
+            url,
+            headers=chunk_headers,
+            stream=True,
+            timeout=30,
         ) as response:
             response.raise_for_status()
-            with path.open("wb") as fh:
+            with path.open("wb") as file:
                 for data in response.iter_content(chunk_size=LARGE_FILE_CHUNK_SIZE):
                     if data:
-                        fh.write(data)
+                        file.write(data)
                         if rate_limiter:
                             rate_limiter.consume(len(data))
+
                         written += len(data)
                         on_progress(len(data))
 
         if path.exists() and path.stat().st_size == expected:
             return False
 
-        on_progress(-written)
-        return True
-
     except (RequestException, OSError):
         on_progress(-written)
         return True
 
+    on_progress(-written)
+    return True
+
 
 def _download_single_chunk(
     url: str,
-    start: int,
-    end: int,
+    byte_range: tuple[int, int],
     path: Path,
     headers: dict[str, str],
-    on_progress,
+    on_progress: callable,
     rate_limiter: RateLimiter | None = None,
-) -> bool:  # pylint: disable=too-many-arguments,too-many-positional-arguments
+) -> bool:
     """Download one byte-range chunk to disk, retrying with backoff on failure.
 
     Skips the download entirely when the .partN file already has the correct
     size, enabling seamless resume across sessions. Each retry re-downloads
     the chunk from scratch (the previous, incomplete attempt is overwritten).
 
-    Args:
-        url: The signed download URL.
-        start: First byte of the range (inclusive).
-        end: Last byte of the range (inclusive).
-        path: Destination .partN file path.
-        headers: HTTP headers to include in the request.
-        on_progress: Callable(bytes_downloaded) for progress reporting.
-            Called with a negative value to roll back credit after a
-            failed attempt.
-        rate_limiter: Optional shared limiter capping aggregate throughput.
-
     Returns:
         True on failure (all retries exhausted), False on success.
+
     """
-    expected = end - start + 1
+    start_byte = byte_range[0]
+    end_byte = byte_range[1]
+    expected = end_byte - start_byte + 1
 
     # Resume: chunk already complete from a previous run, skip entirely.
     if path.exists() and path.stat().st_size == expected:
@@ -288,7 +289,12 @@ def _download_single_chunk(
 
     for attempt in range(1, CHUNK_MAX_RETRIES + 1):
         failed = _attempt_chunk_once(
-            url, start, end, path, headers, on_progress, rate_limiter,
+            url,
+            (start_byte, end_byte),
+            path,
+            headers,
+            on_progress,
+            rate_limiter,
         )
         if not failed:
             return False
@@ -309,24 +315,17 @@ def download_chunks(
     task: int,
     live_manager: LiveManager,
     rate_limiter: RateLimiter | None = None,
-) -> tuple[list[Path], list[int], bool]:  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+) -> tuple[list[Path], list[int], bool]:
     """Download all work units in parallel using a thread pool.
 
-    The file is split into more units than worker threads (see
-    _compute_unit_ranges); ThreadPoolExecutor naturally hands each idle
-    thread the next pending unit as soon as it finishes one, so fast
-    connections pick up extra work instead of waiting on a slow one.
-
-    Progress is tracked in a thread-safe manner across all workers.
-
-    Returns:
-        chunk_paths: Ordered list of .partN file paths (one per unit).
-        expected_sizes: Expected byte count for each unit.
-        any_failed: True if at least one unit did not complete.
+    The file is split into more units than worker threads (see _compute_unit_ranges);
+    ThreadPoolExecutor naturally hands each idle thread the next pending unit as soon as
+    it finishes one, so fast connections pick up extra work instead of waiting on a slow
+    one. Progress is tracked in a thread-safe manner across all workers.
     """
     ranges = _load_or_create_plan(base_path, content_length, num_connections)
-    chunk_paths = [_chunk_path(base_path, i) for i in range(len(ranges))]
-    expected_sizes = [end - start + 1 for start, end in ranges]
+    chunk_paths = [_chunk_path(base_path, indx) for indx in range(len(ranges))]
+    expected_sizes = [end_byte - start_byte + 1 for start_byte, end_byte in ranges]
 
     lock = threading.Lock()
     total_downloaded = [0]  # mutable container for thread-safe accumulation
@@ -344,10 +343,18 @@ def download_chunks(
         futures = {
             pool.submit(
                 _download_single_chunk,
-                url, start, end, path, headers, on_progress, rate_limiter,
-            ): i
-            for i, ((start, end), path) in enumerate(zip(ranges, chunk_paths))
+                url,
+                (start_byte, end_byte),
+                path,
+                headers,
+                on_progress,
+                rate_limiter,
+            ): indx
+            for indx, ((start_byte, end_byte), path) in enumerate(
+                zip(ranges, chunk_paths),
+            )
         }
+
         for future in as_completed(futures):
             if future.result():
                 any_failed = True
@@ -379,6 +386,7 @@ def cleanup(chunk_paths: list[Path], base_path: Path) -> None:
     for path in [*chunk_paths, _plan_path(base_path)]:
         try:
             path.unlink(missing_ok=True)
+
         except OSError:
             logging.warning("Could not remove chunk file: %s", path)
 
@@ -392,7 +400,7 @@ def save_file_with_chunks(
     headers: dict[str, str],
     content_length: int,
     rate_limiter: RateLimiter | None = None,
-) -> bool:  # pylint: disable=too-many-arguments,too-many-positional-arguments
+) -> bool:
     """Download a file using parallel byte-range chunks with resume support.
 
     Each chunk is saved to a dedicated .partN file so that an interrupted
@@ -400,26 +408,20 @@ def save_file_with_chunks(
     chunks are verified, they are merged into the final file and the
     temporary .partN files are removed.
 
-    Args:
-        url: The signed download URL.
-        download_path: Final destination path for the assembled file.
-        num_connections: Number of parallel download threads/chunks.
-        task: Progress-bar task identifier.
-        live_manager: Live manager used to update the progress bar.
-        headers: HTTP headers to include in every chunk request.
-        content_length: Total file size in bytes (from detect_range_support).
-        rate_limiter: Optional shared limiter capping aggregate throughput
-            across every chunk thread (and every other concurrently
-            downloading file, if the same instance is shared).
-
     Returns:
         True on failure (.partN files kept for next resume), False on success.
+
     """
     base_path = Path(download_path)
-
     chunk_paths, expected_sizes, any_failed = download_chunks(
-        url, content_length, num_connections,
-        base_path, headers, task, live_manager, rate_limiter,
+        url,
+        content_length,
+        num_connections,
+        base_path,
+        headers,
+        task,
+        live_manager,
+        rate_limiter,
     )
 
     if any_failed or not verify_chunks(chunk_paths, expected_sizes):

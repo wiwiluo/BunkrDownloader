@@ -42,6 +42,13 @@ def write_file(filename: str, content: str = "") -> None:
         file.write(content)
 
 
+def log_session_start() -> None:
+    """Append a session start marker to the session log."""
+    session_start = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with Path(SESSION_LOG).open("a", encoding="utf-8") as log_file:
+        log_file.write(f"\n--- Session started {session_start} UTC ---\n")
+
+
 def write_on_session_log(
     content: str | DownloadInfo,
     *,

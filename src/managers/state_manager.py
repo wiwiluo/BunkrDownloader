@@ -32,6 +32,7 @@ def load_album_state(download_path: str) -> dict | None:
     Returns:
         A dict with "album_id", "item_pages" and "items" keys, or None if
         no valid state file is present (first run, or corrupt/foreign file).
+
     """
     path = _state_path(download_path)
     if not path.exists():
@@ -39,6 +40,7 @@ def load_album_state(download_path: str) -> dict | None:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+
     except (json.JSONDecodeError, OSError):
         logging.warning("Could not read album state file: %s", path)
         return None
@@ -66,5 +68,6 @@ def save_album_state(
             ),
             encoding="utf-8",
         )
+
     except OSError:
         logging.warning("Could not write album state file: %s", path)

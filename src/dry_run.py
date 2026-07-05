@@ -12,16 +12,17 @@ import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rich.console import Console
 from rich.table import Table
 
-from src.config import DOWNLOAD_HEADERS, MAX_WORKERS
+from src.config import DOWNLOAD_HEADERS, KB, MAX_WORKERS
 from src.crawlers.crawler_utils import get_download_info
 from src.downloaders.download_utils import detect_range_support
 from src.file_utils import matches_ignore_list, matches_include_list, truncate_filename
 from src.general_utils import fetch_page
 
 if TYPE_CHECKING:
+    from rich.console import Console
+
     from src.config import SessionInfo
 
 _STATUS_LABELS: dict[str, tuple[str, str]] = {
@@ -40,9 +41,11 @@ def _format_size(num_bytes: int | None) -> str:
         return "unknown"
     value = float(num_bytes)
     for unit in ("B", "KB", "MB", "GB"):
-        if value < 1024:
+        if value < KB:
             return f"{value:.1f} {unit}"
-        value /= 1024
+
+        value /= KB
+
     return f"{value:.1f} TB"
 
 
@@ -51,7 +54,7 @@ async def _resolve_item(
     session_info: SessionInfo,
     cached_items: dict[str, dict],
     semaphore: asyncio.Semaphore,
-) -> dict: # pylint: disable=too-many-return-statements
+) -> dict:
     """Resolve filename, size and status for one item without downloading it."""
     async with semaphore:
         cached = cached_items.get(item_page)
@@ -66,8 +69,6 @@ async def _resolve_item(
                     "size": expected_path.stat().st_size,
                     "status": "already_downloaded",
                 }
-            # Cached "completed" entry is stale (file missing) — fall
-            # through and resolve it fresh, same as a real download would.
 
         item_soup = await fetch_page(item_page)
         if item_soup is None:
@@ -83,6 +84,7 @@ async def _resolve_item(
 
         if matches_ignore_list(filename, ignore_list):
             return {"filename": filename, "size": None, "status": "filtered_ignore"}
+
         if matches_include_list(filename, include_list):
             return {"filename": filename, "size": None, "status": "filtered_include"}
 
@@ -101,43 +103,15 @@ async def _resolve_item(
         return {"filename": filename, "size": size, "status": "would_download"}
 
 
-async def run_dry_run(
-    album_id: str,
-    item_pages: list[str],
-    session_info: SessionInfo,
-    cached_items: dict[str, dict],
-    console: Console,
-    max_workers: int = MAX_WORKERS,
-) -> None:  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-    """Print a preview table of what a download would do, without downloading.
-
-    Args:
-        album_id: Album identifier (or single-item identifier) used as the
-            table title.
-        item_pages: The item page URLs that would be processed.
-        session_info: Session context (download path, args, etc.).
-        cached_items: Per-item state persisted from a previous run, used to
-            report "already downloaded" without a network round-trip.
-        console: Rich console to print the report to.
-        max_workers: Concurrency limit for resolving items, matching the
-            same default used by real album downloads.
-    """
-    semaphore = asyncio.Semaphore(max_workers)
-    results = await asyncio.gather(
-        *(_resolve_item(p, session_info, cached_items, semaphore) for p in item_pages),
-    )
-
-    table = Table(title=f"Dry run — {album_id} ({len(item_pages)} item(s))")
-    table.add_column("Filename", overflow="fold")
-    table.add_column("Size", justify="right")
-    table.add_column("Status")
-
+def process_results_rows(results: list[dict], table: Table) -> tuple[int, dict]:
+    """Update table rows and aggregate stats from results."""
     total_download_bytes = 0
     counts: dict[str, int] = {}
 
     for item in results:
         status = item["status"]
         counts[status] = counts.get(status, 0) + 1
+
         if status == "would_download" and item["size"]:
             total_download_bytes += item["size"]
 
@@ -148,18 +122,41 @@ async def run_dry_run(
             f"[{color}]{label}[/{color}]",
         )
 
+    return total_download_bytes, counts
+
+
+async def run_dry_run(
+    album_id: str,
+    item_pages: list[str],
+    session_info: SessionInfo,
+    cached_items: dict[str, dict],
+    console: Console,
+) -> None:
+    """Print a preview table of what a download would do, without downloading."""
+    semaphore = asyncio.Semaphore(MAX_WORKERS)
+    results = await asyncio.gather(
+        *(_resolve_item(p, session_info, cached_items, semaphore) for p in item_pages),
+    )
+
+    table = Table(title=f"Dry run — {album_id} ({len(item_pages)} item(s))")
+    table.add_column("Filename", overflow="fold")
+    table.add_column("Size", justify="right")
+    table.add_column("Status")
+    total_download_bytes, counts = process_results_rows(results, table)
+
     console.print(table)
     console.print(
         f"\nWould download: {counts.get('would_download', 0)} file(s), "
         f"{_format_size(total_download_bytes)} total",
     )
+
     if counts.get("already_downloaded"):
         console.print(f"Already downloaded: {counts['already_downloaded']} file(s)")
 
-    filtered_total = counts.get("filtered_ignore", 0) + counts.get("filtered_include", 0)
-    if filtered_total:
-        console.print(f"Filtered out: {filtered_total} file(s)")
+    filtered = counts.get("filtered_ignore", 0) + counts.get("filtered_include", 0)
+    if filtered:
+        console.print(f"Filtered out: {filtered} file(s)")
 
-    unresolved_total = counts.get("unresolved", 0) + counts.get("fetch_failed", 0)
-    if unresolved_total:
-        console.print(f"[red]Could not resolve: {unresolved_total} file(s)[/red]")
+    unresolved = counts.get("unresolved", 0) + counts.get("fetch_failed", 0)
+    if unresolved:
+        console.print(f"[red]Could not resolve: {unresolved} file(s)[/red]")

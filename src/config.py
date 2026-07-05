@@ -6,6 +6,7 @@ settings into a single location.
 
 from __future__ import annotations
 
+import logging
 import re
 from argparse import ArgumentParser
 from collections import deque
@@ -16,6 +17,7 @@ from typing import TYPE_CHECKING
 
 try:
     import tomllib  # Python 3.11+ standard library
+
 except ModuleNotFoundError:
     import tomli as tomllib  # Python 3.10 fallback (see requirements.txt)
 
@@ -121,7 +123,7 @@ LARGE_FILE_CHUNK_SIZE = 16 * MB
 # Minimum file size required to trigger a parallel chunked download.
 MIN_PARALLEL_SIZE = 5 * MB
 
-# ── Work-stealing unit sizing ────────────────────────────────────────────
+# ===================== Work-stealing unit sizing =====================
 # A file selected for chunked download is split into many small "work
 # units" rather than exactly --connections equal pieces. Worker threads
 # pull units from a shared queue (via ThreadPoolExecutor) as they finish,
@@ -257,7 +259,9 @@ _CONFIG_FIELDS: dict[str, tuple[object, object]] = {
     "no_download_folder": (False, lambda v: isinstance(v, bool)),
     "disable_ui": (False, lambda v: isinstance(v, bool)),
     "disable_disk_check": (False, lambda v: isinstance(v, bool)),
-    "max_retries": (MAX_RETRIES, lambda v: isinstance(v, int) and not isinstance(v, bool)),
+    "max_retries": (
+        MAX_RETRIES, lambda v: isinstance(v, int) and not isinstance(v, bool),
+    ),
     "connections": (
         DEFAULT_CONNECTIONS, lambda v: isinstance(v, int) and not isinstance(v, bool),
     ),
@@ -268,8 +272,12 @@ _CONFIG_FIELDS: dict[str, tuple[object, object]] = {
     "max_concurrent_urls": (
         1, lambda v: isinstance(v, int) and not isinstance(v, bool),
     ),
-    "ignore": (None, lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v)),
-    "include": (None, lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v)),
+    "ignore": (
+        None, lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v),
+    ),
+    "include": (
+        None, lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v),
+    ),
 }
 
 
@@ -286,10 +294,12 @@ def _find_config_file(explicit_path: str | None) -> Path | None:
 def _load_toml_config(path: Path) -> dict:
     """Load a TOML config file, returning {} on any read/parse failure."""
     try:
-        with path.open("rb") as f:
-            return tomllib.load(f)
+        with path.open("rb") as file:
+            return tomllib.load(file)
+
     except (OSError, tomllib.TOMLDecodeError) as exc:
-        print(f"Warning: could not read config file '{path}': {exc}")
+        log_message = f"Warning: could not read config file '{path}': {exc}"
+        logging.warning(log_message)
         return {}
 
 
@@ -311,17 +321,19 @@ def apply_config_file_defaults(args: Namespace) -> Namespace:
             continue  # this parser variant doesn't expose this option
 
         if getattr(args, key) is not None:
-            continue  # explicitly set via CLI — config file never overrides it
+            continue  # explicitly set via CLI -- config file never overrides it
 
         if key in toml_data:
             value = toml_data[key]
             if is_valid(value):
                 setattr(args, key, value)
                 continue
-            print(
-                f"Warning: bunkr.toml '{key}' has an invalid value "
-                f"({value!r}); using the default instead.",
+
+            log_message = (
+                f"Warning: bunkr.toml '{key}' has an invalid value ({value!r}); "
+                "using the default instead.",
             )
+            logging.warning(log_message)
 
         setattr(args, key, builtin_default)
 
